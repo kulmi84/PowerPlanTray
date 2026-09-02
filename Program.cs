@@ -28,7 +28,7 @@ internal static class Program
         private readonly ToolStripMenuItem _hpItem;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly Icon _boltIcon;
-        private readonly Icon _hpIcon;
+        private readonly Icon _batteryIcon;
 
         public TrayApplicationContext()
         {
@@ -47,7 +47,7 @@ internal static class Program
             });
 
             _boltIcon = CreateBoltIcon();
-            _hpIcon = CreateHpIcon();
+            _batteryIcon = CreateBatteryIcon();
 
             _notifyIcon = new NotifyIcon
             {
@@ -76,7 +76,7 @@ internal static class Program
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _boltIcon.Dispose();
-            _hpIcon.Dispose();
+            _batteryIcon.Dispose();
             base.ExitThreadCore();
         }
 
@@ -109,17 +109,17 @@ internal static class Program
             }
             else if (string.Equals(current, HpOptimized, StringComparison.OrdinalIgnoreCase))
             {
-                _notifyIcon.Icon = _hpIcon;
+                _notifyIcon.Icon = _batteryIcon;
                 _notifyIcon.Text = "PowerPlanTray - HP Optimized";
             }
             else if (string.Equals(current, Balanced, StringComparison.OrdinalIgnoreCase))
             {
-                _notifyIcon.Icon = _hpIcon;
+                _notifyIcon.Icon = _batteryIcon;
                 _notifyIcon.Text = "PowerPlanTray - Ausbalanciert";
             }
             else
             {
-                _notifyIcon.Icon = _hpIcon;
+                _notifyIcon.Icon = _batteryIcon;
                 _notifyIcon.Text = "PowerPlanTray";
             }
         }
@@ -132,7 +132,6 @@ internal static class Program
                 SetupGraphics(g);
                 using var brush = new SolidBrush(Color.White);
 
-                // Intentionally oversized: Windows shrinks NotifyIcon glyphs strongly.
                 PointF[] bolt =
                 {
                     new(19.0f, 1.5f),
@@ -147,28 +146,38 @@ internal static class Program
             return ToIcon(bitmap);
         }
 
-        private static Icon CreateHpIcon()
+        private static Icon CreateBatteryIcon()
         {
             using var bitmap = NewCanvas();
             using (var g = Graphics.FromImage(bitmap))
             {
                 SetupGraphics(g);
-                using var pen = new Pen(Color.White, 2.6f);
+                using var pen = new Pen(Color.White, 3.2f)
+                {
+                    StartCap = LineCap.Round,
+                    EndCap = LineCap.Round,
+                    LineJoin = LineJoin.Round
+                };
                 using var brush = new SolidBrush(Color.White);
 
-                // Almost the complete 32x32 canvas so it stays large in the real tray.
-                g.DrawEllipse(pen, 1.7f, 1.7f, 28.6f, 28.6f);
-
-                // Bold italic 'hp' is much more legible after Windows scales it to tray size.
-                using var font = new Font("Arial", 17.5f, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Pixel);
-                using var format = new StringFormat
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center
-                };
-                g.DrawString("hp", font, brush, new RectangleF(0.5f, 1.0f, 31f, 30f), format);
+                // Large, simple battery outline optimized for the real Windows 11 tray.
+                using var body = RoundedRect(new RectangleF(3.0f, 7.0f, 24.0f, 18.0f), 3.0f);
+                g.DrawPath(pen, body);
+                g.FillRectangle(brush, 28.0f, 12.0f, 3.0f, 8.0f);
             }
             return ToIcon(bitmap);
+        }
+
+        private static GraphicsPath RoundedRect(RectangleF rect, float radius)
+        {
+            var path = new GraphicsPath();
+            var d = radius * 2;
+            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
+            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
+            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
         }
 
         private static Bitmap NewCanvas() =>
@@ -178,7 +187,6 @@ internal static class Program
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             g.Clear(Color.Transparent);
         }
 
