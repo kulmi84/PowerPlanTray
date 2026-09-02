@@ -8,4 +8,9 @@
     <AssemblyName>PowerPlanTray</AssemblyName>
     <RootNamespace>PowerPlanTray</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="assets\bolt-white.svg" />
+    <EmbeddedResource Include="assets\hp-white.svg" />
+  </ItemGroup>
 </Project>
