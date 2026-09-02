@@ -46,7 +46,6 @@ internal static class Program
                 new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread())
             });
 
-            // Geometry mirrors assets/bolt-white.svg and assets/hp-white.svg.
             _boltIcon = CreateBoltIcon();
             _hpIcon = CreateHpIcon();
 
@@ -132,14 +131,16 @@ internal static class Program
             {
                 SetupGraphics(g);
                 using var brush = new SolidBrush(Color.White);
+
+                // Intentionally oversized: Windows shrinks NotifyIcon glyphs strongly.
                 PointF[] bolt =
                 {
-                    new(18f, 4f),
-                    new(8.5f, 17f),
-                    new(14.5f, 17f),
-                    new(12.5f, 28f),
-                    new(24f, 13f),
-                    new(18f, 13f)
+                    new(19.0f, 1.5f),
+                    new(4.5f, 18.0f),
+                    new(13.8f, 18.0f),
+                    new(10.7f, 30.5f),
+                    new(27.5f, 11.5f),
+                    new(18.2f, 11.5f)
                 };
                 g.FillPolygon(brush, bolt);
             }
@@ -152,31 +153,20 @@ internal static class Program
             using (var g = Graphics.FromImage(bitmap))
             {
                 SetupGraphics(g);
-                using var pen = new Pen(Color.White, 2f);
+                using var pen = new Pen(Color.White, 2.6f);
                 using var brush = new SolidBrush(Color.White);
 
-                // Round HP mark, intentionally compact for the Windows 11 tray.
-                g.DrawEllipse(pen, 4f, 4f, 24f, 24f);
+                // Almost the complete 32x32 canvas so it stays large in the real tray.
+                g.DrawEllipse(pen, 1.7f, 1.7f, 28.6f, 28.6f);
 
-                var state = g.Save();
-                using var skew = new Matrix();
-                skew.Shear(-0.21f, 0f);
-                g.Transform = skew;
-
-                g.FillRectangle(brush, 11.2f, 9f, 2.8f, 14f);
-                g.FillRectangle(brush, 13.3f, 13f, 5.0f, 2.4f);
-                g.FillRectangle(brush, 16.0f, 13f, 2.6f, 10f);
-                g.FillRectangle(brush, 19.4f, 13f, 2.7f, 10f);
-
-                using var p = new GraphicsPath();
-                p.AddPolygon(new PointF[]
+                // Bold italic 'hp' is much more legible after Windows scales it to tray size.
+                using var font = new Font("Arial", 17.5f, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Pixel);
+                using var format = new StringFormat
                 {
-                    new(21.5f,13f), new(25.2f,13f), new(26.5f,14.1f),
-                    new(26.1f,17.2f), new(25.1f,20.0f), new(22.2f,20.0f),
-                    new(21.7f,23f), new(19.1f,23f), new(20.9f,13f)
-                });
-                g.FillPath(brush, p);
-                g.Restore(state);
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center
+                };
+                g.DrawString("hp", font, brush, new RectangleF(0.5f, 1.0f, 31f, 30f), format);
             }
             return ToIcon(bitmap);
         }
@@ -188,6 +178,7 @@ internal static class Program
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             g.Clear(Color.Transparent);
         }
 
