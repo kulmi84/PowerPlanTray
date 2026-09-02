@@ -12,10 +12,19 @@ Die GUIDs sind aktuell fest auf den Zielrechner eingestellt.
 
 ## Bedienung
 
+- Linksklick auf das Tray-Symbol: Höchstleistung ↔ HP Optimized
 - Rechtsklick auf das Tray-Symbol: Plan auswählen
 - Haken zeigt den aktiven Plan
-- Doppelklick auf das Tray-Symbol: Höchstleistung ↔ HP Optimized
 - Status wird alle 5 Sekunden aktualisiert
+
+## Tray-Symbole
+
+Die gewünschten weißen, monochromen Symbole liegen unter `assets/`:
+
+- `assets/bolt-white.svg` – Höchstleistung
+- `assets/hp-white.svg` – HP Optimized
+
+Beide sind für dunkle Windows-11-Taskleisten auf transparentem Hintergrund ausgelegt.
 
 ## Wichtig
 
