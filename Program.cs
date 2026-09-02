@@ -28,7 +28,7 @@ internal static class Program
         private readonly ToolStripMenuItem _hpItem;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly Icon _boltIcon;
-        private readonly Icon _batteryIcon;
+        private readonly Icon _hpIcon;
 
         public TrayApplicationContext()
         {
@@ -47,7 +47,7 @@ internal static class Program
             });
 
             _boltIcon = CreateBoltIcon();
-            _batteryIcon = CreateBatteryIcon();
+            _hpIcon = CreateHpIcon();
 
             _notifyIcon = new NotifyIcon
             {
@@ -76,16 +76,14 @@ internal static class Program
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _boltIcon.Dispose();
-            _batteryIcon.Dispose();
+            _hpIcon.Dispose();
             base.ExitThreadCore();
         }
 
         private void ToggleHighHp()
         {
             var current = GetActivePlan();
-            SetPlan(string.Equals(current, HighPerformance, StringComparison.OrdinalIgnoreCase)
-                ? HpOptimized
-                : HighPerformance);
+            SetPlan(string.Equals(current, HighPerformance, StringComparison.OrdinalIgnoreCase) ? HpOptimized : HighPerformance);
         }
 
         private void SetPlan(string guid)
@@ -97,7 +95,6 @@ internal static class Program
         private void RefreshState()
         {
             var current = GetActivePlan();
-
             _balancedItem.Checked = string.Equals(current, Balanced, StringComparison.OrdinalIgnoreCase);
             _highItem.Checked = string.Equals(current, HighPerformance, StringComparison.OrdinalIgnoreCase);
             _hpItem.Checked = string.Equals(current, HpOptimized, StringComparison.OrdinalIgnoreCase);
@@ -107,20 +104,14 @@ internal static class Program
                 _notifyIcon.Icon = _boltIcon;
                 _notifyIcon.Text = "PowerPlanTray - Höchstleistung";
             }
-            else if (string.Equals(current, HpOptimized, StringComparison.OrdinalIgnoreCase))
-            {
-                _notifyIcon.Icon = _batteryIcon;
-                _notifyIcon.Text = "PowerPlanTray - HP Optimized";
-            }
-            else if (string.Equals(current, Balanced, StringComparison.OrdinalIgnoreCase))
-            {
-                _notifyIcon.Icon = _batteryIcon;
-                _notifyIcon.Text = "PowerPlanTray - Ausbalanciert";
-            }
             else
             {
-                _notifyIcon.Icon = _batteryIcon;
-                _notifyIcon.Text = "PowerPlanTray";
+                _notifyIcon.Icon = _hpIcon;
+                _notifyIcon.Text = string.Equals(current, HpOptimized, StringComparison.OrdinalIgnoreCase)
+                    ? "PowerPlanTray - HP Optimized"
+                    : string.Equals(current, Balanced, StringComparison.OrdinalIgnoreCase)
+                        ? "PowerPlanTray - Ausbalanciert"
+                        : "PowerPlanTray";
             }
         }
 
@@ -131,62 +122,47 @@ internal static class Program
             {
                 SetupGraphics(g);
                 using var brush = new SolidBrush(Color.White);
-
                 PointF[] bolt =
                 {
-                    new(19.0f, 1.5f),
-                    new(4.5f, 18.0f),
-                    new(13.8f, 18.0f),
-                    new(10.7f, 30.5f),
-                    new(27.5f, 11.5f),
-                    new(18.2f, 11.5f)
+                    new(19.0f, 1.5f), new(4.5f, 18.0f), new(13.8f, 18.0f),
+                    new(10.7f, 30.5f), new(27.5f, 11.5f), new(18.2f, 11.5f)
                 };
                 g.FillPolygon(brush, bolt);
             }
             return ToIcon(bitmap);
         }
 
-        private static Icon CreateBatteryIcon()
+        private static Icon CreateHpIcon()
         {
             using var bitmap = NewCanvas();
             using (var g = Graphics.FromImage(bitmap))
             {
                 SetupGraphics(g);
-                using var pen = new Pen(Color.White, 3.2f)
-                {
-                    StartCap = LineCap.Round,
-                    EndCap = LineCap.Round,
-                    LineJoin = LineJoin.Round
-                };
-                using var brush = new SolidBrush(Color.White);
+                using var white = new SolidBrush(Color.White);
+                using var cutout = new SolidBrush(Color.Transparent);
 
-                // Large, simple battery outline optimized for the real Windows 11 tray.
-                using var body = RoundedRect(new RectangleF(3.0f, 7.0f, 24.0f, 18.0f), 3.0f);
-                g.DrawPath(pen, body);
-                g.FillRectangle(brush, 28.0f, 12.0f, 3.0f, 8.0f);
+                // Bold round HP mark: solid white disc with dark/transparent HP cutouts.
+                // The disc fills almost the complete canvas so Windows tray scaling keeps it prominent.
+                g.FillEllipse(white, 1.5f, 1.5f, 29f, 29f);
+
+                // Cut the stylized lowercase hp out of the white disc.
+                g.CompositingMode = CompositingMode.SourceCopy;
+                using var clear = new SolidBrush(Color.Transparent);
+                using var font = new Font("Arial", 18.5f, FontStyle.Bold | FontStyle.Italic, GraphicsUnit.Pixel);
+                using var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString("hp", font, clear, new RectangleF(-0.5f, 0.5f, 33f, 31f), format);
+                g.CompositingMode = CompositingMode.SourceOver;
             }
             return ToIcon(bitmap);
         }
 
-        private static GraphicsPath RoundedRect(RectangleF rect, float radius)
-        {
-            var path = new GraphicsPath();
-            var d = radius * 2;
-            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
-            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-            return path;
-        }
-
-        private static Bitmap NewCanvas() =>
-            new(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        private static Bitmap NewCanvas() => new(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 
         private static void SetupGraphics(Graphics g)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             g.Clear(Color.Transparent);
         }
 
@@ -210,23 +186,15 @@ internal static class Program
             {
                 using var process = Process.Start(new ProcessStartInfo
                 {
-                    FileName = "powercfg.exe",
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
+                    FileName = "powercfg.exe", Arguments = arguments, UseShellExecute = false,
+                    RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true
                 });
-
                 if (process is null) return string.Empty;
                 var output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit(3000);
                 return output;
             }
-            catch
-            {
-                return string.Empty;
-            }
+            catch { return string.Empty; }
         }
 
         [DllImport("user32.dll", SetLastError = true)]
