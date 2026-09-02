@@ -28,7 +28,7 @@ internal static class Program
         private readonly ToolStripMenuItem _hpItem;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly Icon _boltIcon;
-        private readonly Icon _batteryIcon;
+        private readonly Icon _hpIcon;
 
         public TrayApplicationContext()
         {
@@ -46,8 +46,9 @@ internal static class Program
                 new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread())
             });
 
+            // Geometry mirrors assets/bolt-white.svg and assets/hp-white.svg.
             _boltIcon = CreateBoltIcon();
-            _batteryIcon = CreateBatteryIcon();
+            _hpIcon = CreateHpIcon();
 
             _notifyIcon = new NotifyIcon
             {
@@ -57,7 +58,6 @@ internal static class Program
                 Visible = true
             };
 
-            // One left click toggles directly between High Performance and HP Optimized.
             _notifyIcon.MouseClick += (_, e) =>
             {
                 if (e.Button == MouseButtons.Left)
@@ -77,7 +77,7 @@ internal static class Program
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _boltIcon.Dispose();
-            _batteryIcon.Dispose();
+            _hpIcon.Dispose();
             base.ExitThreadCore();
         }
 
@@ -110,81 +110,85 @@ internal static class Program
             }
             else if (string.Equals(current, HpOptimized, StringComparison.OrdinalIgnoreCase))
             {
-                _notifyIcon.Icon = _batteryIcon;
+                _notifyIcon.Icon = _hpIcon;
                 _notifyIcon.Text = "PowerPlanTray - HP Optimized";
             }
             else if (string.Equals(current, Balanced, StringComparison.OrdinalIgnoreCase))
             {
-                _notifyIcon.Icon = _batteryIcon;
+                _notifyIcon.Icon = _hpIcon;
                 _notifyIcon.Text = "PowerPlanTray - Ausbalanciert";
             }
             else
             {
-                _notifyIcon.Icon = _batteryIcon;
+                _notifyIcon.Icon = _hpIcon;
                 _notifyIcon.Text = "PowerPlanTray";
             }
         }
 
         private static Icon CreateBoltIcon()
         {
-            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var bitmap = NewCanvas();
             using (var g = Graphics.FromImage(bitmap))
             {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
+                SetupGraphics(g);
                 using var brush = new SolidBrush(Color.White);
-
                 PointF[] bolt =
                 {
-                    new(18.2f, 1.5f),
-                    new(6.0f, 17.2f),
-                    new(13.7f, 17.2f),
-                    new(10.7f, 30.3f),
-                    new(26.2f, 12.2f),
-                    new(18.0f, 12.2f)
+                    new(18f, 4f),
+                    new(8.5f, 17f),
+                    new(14.5f, 17f),
+                    new(12.5f, 28f),
+                    new(24f, 13f),
+                    new(18f, 13f)
                 };
                 g.FillPolygon(brush, bolt);
             }
             return ToIcon(bitmap);
         }
 
-        private static Icon CreateBatteryIcon()
+        private static Icon CreateHpIcon()
         {
-            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var bitmap = NewCanvas();
             using (var g = Graphics.FromImage(bitmap))
             {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
-
-                using var pen = new Pen(Color.White, 3.0f)
-                {
-                    StartCap = LineCap.Round,
-                    EndCap = LineCap.Round,
-                    LineJoin = LineJoin.Round
-                };
+                SetupGraphics(g);
+                using var pen = new Pen(Color.White, 2f);
                 using var brush = new SolidBrush(Color.White);
 
-                // Large monochrome Windows-style battery outline, sized for the tray.
-                using var path = RoundedRect(new RectangleF(3.0f, 8.0f, 23.0f, 16.0f), 3.0f);
-                g.DrawPath(pen, path);
-                g.FillRectangle(brush, 27.0f, 12.0f, 3.0f, 8.0f);
+                // Round HP mark, intentionally compact for the Windows 11 tray.
+                g.DrawEllipse(pen, 4f, 4f, 24f, 24f);
 
-                // Small fill bar so the icon stays readable at 16x16.
-                g.FillRectangle(brush, 7.0f, 12.0f, 10.0f, 8.0f);
+                var state = g.Save();
+                using var skew = new Matrix();
+                skew.Shear(-0.21f, 0f);
+                g.Transform = skew;
+
+                g.FillRectangle(brush, 11.2f, 9f, 2.8f, 14f);
+                g.FillRectangle(brush, 13.3f, 13f, 5.0f, 2.4f);
+                g.FillRectangle(brush, 16.0f, 13f, 2.6f, 10f);
+                g.FillRectangle(brush, 19.4f, 13f, 2.7f, 10f);
+
+                using var p = new GraphicsPath();
+                p.AddPolygon(new PointF[]
+                {
+                    new(21.5f,13f), new(25.2f,13f), new(26.5f,14.1f),
+                    new(26.1f,17.2f), new(25.1f,20.0f), new(22.2f,20.0f),
+                    new(21.7f,23f), new(19.1f,23f), new(20.9f,13f)
+                });
+                g.FillPath(brush, p);
+                g.Restore(state);
             }
             return ToIcon(bitmap);
         }
 
-        private static GraphicsPath RoundedRect(RectangleF rect, float radius)
+        private static Bitmap NewCanvas() =>
+            new(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+        private static void SetupGraphics(Graphics g)
         {
-            var path = new GraphicsPath();
-            var d = radius * 2;
-            path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-            path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
-            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-            path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-            return path;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.Clear(Color.Transparent);
         }
 
         private static Icon ToIcon(Bitmap bitmap)
