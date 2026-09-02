@@ -31,7 +31,7 @@ internal static class Program
             var menu = new ContextMenuStrip();
             menu.Items.AddRange(new ToolStripItem[] { _highItem, _hpItem, _balancedItem, new ToolStripSeparator(), new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()) });
             _boltIcon = CreateBoltIcon();
-            _hpIcon = CreateHpIcon();
+            _hpIcon = CreateCrossedBoltIcon();
             _notifyIcon = new NotifyIcon { Icon = _boltIcon, Text = "PowerPlanTray", ContextMenuStrip = menu, Visible = true };
             _notifyIcon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ToggleHighHp(); };
             _timer = new System.Windows.Forms.Timer { Interval = 5000 };
@@ -54,6 +54,7 @@ internal static class Program
 
         private static Icon CreateBoltIcon()
         {
+            // Keep the existing Höchstleistung bolt exactly as before.
             using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bitmap))
             {
@@ -63,14 +64,40 @@ internal static class Program
             return ToIcon(bitmap);
         }
 
-        private static Icon CreateHpIcon()
+        private static Icon CreateCrossedBoltIcon()
         {
-            // Fixed ICO containing dedicated 16x16 and 32x32 raster layers.
-            // White filled circle + bold black italic "hp", matching the chosen preview style.
-            const string data = "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";
-            var bytes = Convert.FromBase64String(data);
-            var stream = new MemoryStream(bytes, writable: false);
-            return new Icon(stream, 16, 16);
+            // HP Optimized: same visual language as the performance bolt,
+            // surrounded by a smooth white prohibition ring and diagonal slash.
+            // Render oversized and downsample once for clean 16px tray edges.
+            const int scale = 4;
+            using var large = new Bitmap(32 * scale, 32 * scale, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(large))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.Clear(Color.Transparent);
+                g.ScaleTransform(scale, scale);
+
+                using var white = new SolidBrush(Color.White);
+                using var ringPen = new Pen(Color.White, 2.7f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                using var slashPen = new Pen(Color.White, 3.0f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+
+                // Slightly smaller bolt so the ring has breathing room.
+                PointF[] bolt = { new(18.2f,5.2f), new(8.6f,16.2f), new(14.7f,16.2f), new(12.6f,26.0f), new(23.5f,13.3f), new(17.4f,13.3f) };
+                g.FillPolygon(white, bolt);
+                g.DrawEllipse(ringPen, 3.4f, 3.4f, 25.2f, 25.2f);
+                g.DrawLine(slashPen, 6.9f, 7.0f, 25.0f, 25.1f);
+            }
+
+            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.Clear(Color.Transparent);
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.DrawImage(large, new Rectangle(0, 0, 32, 32));
+            }
+            return ToIcon(bitmap);
         }
 
         private static Icon ToIcon(Bitmap bitmap) { var hIcon = bitmap.GetHicon(); try { return (Icon)Icon.FromHandle(hIcon).Clone(); } finally { DestroyIcon(hIcon); } }
