@@ -34,27 +34,12 @@ internal static class Program
             _balancedItem = new ToolStripMenuItem("Ausbalanciert", null, (_, _) => SetPlan(Balanced));
             _highItem = new ToolStripMenuItem("Höchstleistung", null, (_, _) => SetPlan(HighPerformance));
             _hpItem = new ToolStripMenuItem("HP Optimized", null, (_, _) => SetPlan(HpOptimized));
-
             var menu = new ContextMenuStrip();
-            menu.Items.AddRange(new ToolStripItem[]
-            {
-                _highItem,
-                _hpItem,
-                _balancedItem,
-                new ToolStripSeparator(),
-                new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread())
-            });
+            menu.Items.AddRange(new ToolStripItem[] { _highItem, _hpItem, _balancedItem, new ToolStripSeparator(), new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()) });
 
-            _trayIcon = CreateBatteryBoltIcon();
-            _notifyIcon = new NotifyIcon
-            {
-                Icon = _trayIcon,
-                Text = "PowerPlanTray",
-                ContextMenuStrip = menu,
-                Visible = true
-            };
+            _trayIcon = CreateBoltIcon();
+            _notifyIcon = new NotifyIcon { Icon = _trayIcon, Text = "PowerPlanTray", ContextMenuStrip = menu, Visible = true };
             _notifyIcon.DoubleClick += (_, _) => ToggleHighHp();
-
             _timer = new System.Windows.Forms.Timer { Interval = 5000 };
             _timer.Tick += (_, _) => RefreshState();
             _timer.Start();
@@ -63,11 +48,8 @@ internal static class Program
 
         protected override void ExitThreadCore()
         {
-            _timer.Stop();
-            _timer.Dispose();
-            _notifyIcon.Visible = false;
-            _notifyIcon.Dispose();
-            _trayIcon.Dispose();
+            _timer.Stop(); _timer.Dispose();
+            _notifyIcon.Visible = false; _notifyIcon.Dispose(); _trayIcon.Dispose();
             base.ExitThreadCore();
         }
 
@@ -77,11 +59,7 @@ internal static class Program
             SetPlan(string.Equals(current, HighPerformance, StringComparison.OrdinalIgnoreCase) ? HpOptimized : HighPerformance);
         }
 
-        private void SetPlan(string guid)
-        {
-            RunPowerCfg($"/setactive {guid}");
-            RefreshState();
-        }
+        private void SetPlan(string guid) { RunPowerCfg($"/setactive {guid}"); RefreshState(); }
 
         private void RefreshState()
         {
@@ -98,21 +76,24 @@ internal static class Program
             };
         }
 
-        private static Icon CreateBatteryBoltIcon()
+        private static Icon CreateBoltIcon()
         {
+            // Draw oversized so Windows' downsampling keeps the tray glyph bold and crisp.
             using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bitmap))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.Clear(Color.Transparent);
-                using var pen = new Pen(Color.White, 2.5f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
                 using var brush = new SolidBrush(Color.White);
-                g.DrawRoundedRectangle(pen, new RectangleF(3.5f, 8.5f, 23f, 15f), 3f);
-                g.FillRectangle(brush, 27f, 13f, 2.5f, 6f);
-                var bolt = new PointF[]
+                // Nearly fills the full icon canvas: no decorative border, no wasted transparent margin.
+                PointF[] bolt =
                 {
-                    new(17f, 10f), new(10.5f, 17f), new(15f, 17f),
-                    new(13f, 22f), new(21.5f, 14.5f), new(17f, 14.5f)
+                    new(18.2f, 1.5f),
+                    new(6.0f, 17.2f),
+                    new(13.7f, 17.2f),
+                    new(10.7f, 30.3f),
+                    new(26.2f, 12.2f),
+                    new(18.0f, 12.2f)
                 };
                 g.FillPolygon(brush, bolt);
             }
@@ -132,32 +113,14 @@ internal static class Program
         {
             try
             {
-                using var process = Process.Start(new ProcessStartInfo
-                {
-                    FileName = "powercfg.exe", Arguments = arguments, UseShellExecute = false,
-                    RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true
-                });
+                using var process = Process.Start(new ProcessStartInfo { FileName = "powercfg.exe", Arguments = arguments, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true });
                 if (process is null) return string.Empty;
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(3000);
-                return output;
+                var output = process.StandardOutput.ReadToEnd(); process.WaitForExit(3000); return output;
             }
             catch { return string.Empty; }
         }
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
-    }
-
-    private static void DrawRoundedRectangle(this Graphics graphics, Pen pen, RectangleF rect, float radius)
-    {
-        using var path = new GraphicsPath();
-        var d = radius * 2;
-        path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-        path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
-        path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-        path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
-        path.CloseFigure();
-        graphics.DrawPath(pen, path);
     }
 }
