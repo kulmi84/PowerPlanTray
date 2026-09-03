@@ -54,48 +54,67 @@ internal static class Program
 
         private static Icon CreateBoltIcon()
         {
-            // Keep the existing Höchstleistung bolt exactly as before.
+            // Höchstleistung: maximal großer, randlos gefüllter Kreis mit schwarzem Blitz.
             using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bitmap))
             {
-                g.SmoothingMode = SmoothingMode.AntiAlias; g.Clear(Color.Transparent); using var brush = new SolidBrush(Color.White);
-                PointF[] bolt = { new(19f,1.5f), new(4.5f,18f), new(13.8f,18f), new(10.7f,30.5f), new(27.5f,11.5f), new(18.2f,11.5f) }; g.FillPolygon(brush, bolt);
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.Clear(Color.Transparent);
+
+                using var white = new SolidBrush(Color.White);
+                using var black = new SolidBrush(Color.Black);
+
+                // Fast die komplette Tray-Fläche nutzen – bewusst ohne Außenrand.
+                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
+
+                PointF[] bolt =
+                {
+                    new(18.8f, 3.0f),
+                    new(7.0f, 17.2f),
+                    new(13.8f, 17.2f),
+                    new(11.5f, 29.0f),
+                    new(25.4f, 12.6f),
+                    new(18.0f, 12.6f)
+                };
+                g.FillPolygon(black, bolt);
             }
             return ToIcon(bitmap);
         }
 
         private static Icon CreateCrossedBoltIcon()
         {
-            // HP Optimized: same visual language as the performance bolt,
-            // surrounded by a smooth white prohibition ring and diagonal slash.
-            // Render oversized and downsample once for clean 16px tray edges.
-            const int scale = 4;
-            using var large = new Bitmap(32 * scale, 32 * scale, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(large))
+            // HP Optimized: gleicher großer randlos gefüllter Kreis,
+            // schwarzer Blitz plus kräftiger diagonaler Strich.
+            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.Clear(Color.Transparent);
-                g.ScaleTransform(scale, scale);
 
                 using var white = new SolidBrush(Color.White);
-                using var ringPen = new Pen(Color.White, 2.7f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-                using var slashPen = new Pen(Color.White, 3.0f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                using var black = new SolidBrush(Color.Black);
+                using var slashPen = new Pen(Color.Black, 3.8f)
+                {
+                    StartCap = LineCap.Round,
+                    EndCap = LineCap.Round
+                };
 
-                // Slightly smaller bolt so the ring has breathing room.
-                PointF[] bolt = { new(18.2f,5.2f), new(8.6f,16.2f), new(14.7f,16.2f), new(12.6f,26.0f), new(23.5f,13.3f), new(17.4f,13.3f) };
-                g.FillPolygon(white, bolt);
-                g.DrawEllipse(ringPen, 3.4f, 3.4f, 25.2f, 25.2f);
-                g.DrawLine(slashPen, 6.9f, 7.0f, 25.0f, 25.1f);
-            }
+                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
 
-            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bitmap))
-            {
-                g.Clear(Color.Transparent);
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.DrawImage(large, new Rectangle(0, 0, 32, 32));
+                PointF[] bolt =
+                {
+                    new(18.8f, 3.0f),
+                    new(7.0f, 17.2f),
+                    new(13.8f, 17.2f),
+                    new(11.5f, 29.0f),
+                    new(25.4f, 12.6f),
+                    new(18.0f, 12.6f)
+                };
+                g.FillPolygon(black, bolt);
+
+                g.DrawLine(slashPen, 6.3f, 6.3f, 25.7f, 25.7f);
             }
             return ToIcon(bitmap);
         }
