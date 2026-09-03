@@ -184,9 +184,9 @@ internal static class Program
 
         private static Icon CreateQuietIcon()
         {
-            // Leise / Remote: gleicher großer weißer Kreis mit klaren Zzz-Zeichen.
-            // Die Zs werden bewusst ohne Schriftart gezeichnet, damit sie im Tray
-            // bei 16 px stabil und gut erkennbar bleiben.
+            // Leise / Remote: drei weiße Z ohne Kreis oder Rand.
+            // Die Zeichen nutzen fast die komplette Tray-Fläche und werden
+            // als feste Geometrie gezeichnet, damit sie auch bei 16 px klar bleiben.
             using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(bitmap))
             {
@@ -194,53 +194,50 @@ internal static class Program
                 g.PixelOffsetMode = PixelOffsetMode.HighQuality;
                 g.Clear(Color.Transparent);
 
-                using var white = new SolidBrush(Color.White);
-                using var penLarge = new Pen(Color.Black, 3.4f)
+                using var large = new Pen(Color.White, 5.2f)
                 {
                     StartCap = LineCap.Round,
                     EndCap = LineCap.Round,
                     LineJoin = LineJoin.Round
                 };
-                using var penMedium = new Pen(Color.Black, 2.8f)
+                using var medium = new Pen(Color.White, 4.0f)
                 {
                     StartCap = LineCap.Round,
                     EndCap = LineCap.Round,
                     LineJoin = LineJoin.Round
                 };
-                using var penSmall = new Pen(Color.Black, 2.4f)
+                using var small = new Pen(Color.White, 3.2f)
                 {
                     StartCap = LineCap.Round,
                     EndCap = LineCap.Round,
                     LineJoin = LineJoin.Round
                 };
 
-                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
-
-                // Großes Z unten links
-                g.DrawLines(penLarge, new[]
+                // Großes Z oben/rechts – dominant und möglichst groß.
+                g.DrawLines(large, new[]
                 {
-                    new PointF(6.0f, 14.5f),
-                    new PointF(18.0f, 14.5f),
-                    new PointF(6.5f, 26.0f),
-                    new PointF(18.5f, 26.0f)
+                    new PointF(14.5f, 3.2f),
+                    new PointF(29.0f, 3.2f),
+                    new PointF(14.0f, 18.0f),
+                    new PointF(28.8f, 18.0f)
                 });
 
-                // Mittleres z oben rechts
-                g.DrawLines(penMedium, new[]
+                // Mittleres z in der Mitte.
+                g.DrawLines(medium, new[]
                 {
-                    new PointF(17.0f, 8.0f),
-                    new PointF(25.5f, 8.0f),
-                    new PointF(18.0f, 15.0f),
-                    new PointF(26.0f, 15.0f)
+                    new PointF(8.0f, 14.0f),
+                    new PointF(19.0f, 14.0f),
+                    new PointF(8.0f, 24.0f),
+                    new PointF(19.2f, 24.0f)
                 });
 
-                // Kleines z ganz oben rechts
-                g.DrawLines(penSmall, new[]
+                // Kleines z unten/links.
+                g.DrawLines(small, new[]
                 {
-                    new PointF(22.5f, 3.5f),
-                    new PointF(28.0f, 3.5f),
-                    new PointF(23.0f, 7.5f),
-                    new PointF(28.3f, 7.5f)
+                    new PointF(2.5f, 22.0f),
+                    new PointF(10.2f, 22.0f),
+                    new PointF(2.8f, 29.0f),
+                    new PointF(10.5f, 29.0f)
                 });
             }
             return ToIcon(bitmap);
