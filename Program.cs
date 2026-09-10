@@ -2,7 +2,9 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -11,7 +13,7 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.4.0";
+    private const string AppVersion = "1.4.1";
     private const string SettingsDirectoryName = "PowerPlanTray";
     private const string SettingsFileName = "settings.json";
     private const string StartupValueName = "PowerPlanTray";
@@ -21,6 +23,7 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         ApplicationConfiguration.Initialize();
         Application.Run(new TrayApplicationContext());
     }
@@ -66,7 +69,6 @@ internal static class Program
             _timer = new System.Windows.Forms.Timer { Interval = 5000 };
             _timer.Tick += (_, _) => RefreshState();
             _timer.Start();
-
             RefreshState();
         }
 
@@ -108,11 +110,10 @@ internal static class Program
             foreach (var plan in _plans)
             {
                 var capturedPlan = plan;
-                var item = new ToolStripMenuItem(plan.Name, null, (_, _) => SetPlan(capturedPlan))
+                _menu.Items.Add(new ToolStripMenuItem(plan.Name, null, (_, _) => SetPlan(capturedPlan))
                 {
                     Checked = string.Equals(current, plan.Guid, StringComparison.OrdinalIgnoreCase)
-                };
-                _menu.Items.Add(item);
+                });
             }
 
             _menu.Items.Add(new ToolStripSeparator());
@@ -130,9 +131,7 @@ internal static class Program
                 return;
 
             var current = GetActivePlan();
-            SetPlan(string.Equals(current, planA.Guid, StringComparison.OrdinalIgnoreCase)
-                ? planB
-                : planA);
+            SetPlan(string.Equals(current, planA.Guid, StringComparison.OrdinalIgnoreCase) ? planB : planA);
         }
 
         private void SetPlan(PowerPlan plan)
@@ -149,6 +148,8 @@ internal static class Program
             using var form = new Form
             {
                 Text = $"PowerPlanTray v{AppVersion} - Einstellungen",
+                Icon = _boltIcon,
+                ShowIcon = true,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 StartPosition = FormStartPosition.CenterScreen,
                 MaximizeBox = false,
@@ -267,10 +268,7 @@ internal static class Program
                 }
             }
 
-            // Windows' eingebautes Höchstleistungsschema wird auf manchen Modern-Standby-Systemen
-            // nicht dauerhaft von /list angezeigt. Deshalb bleibt es als fester Eintrag verfügbar.
             result.Add(new PowerPlan(WindowsHighPerformanceGuid, "Windows Höchstleistung", WindowsHighPerformanceAlias));
-
             return result;
         }
 
@@ -279,14 +277,11 @@ internal static class Program
             try
             {
                 var path = GetSettingsPath();
-                if (!File.Exists(path))
-                    return new AppSettings();
-                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path)) ?? new AppSettings();
+                return File.Exists(path)
+                    ? JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path)) ?? new AppSettings()
+                    : new AppSettings();
             }
-            catch
-            {
-                return new AppSettings();
-            }
+            catch { return new AppSettings(); }
         }
 
         private static void SaveSettings(AppSettings settings)
@@ -297,9 +292,7 @@ internal static class Program
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllText(path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
             }
-            catch
-            {
-            }
+            catch { }
         }
 
         private static string GetSettingsPath() =>
@@ -312,10 +305,7 @@ internal static class Program
                 using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
                 return key?.GetValue(StartupValueName) is string;
             }
-            catch
-            {
-                return false;
-            }
+            catch { return false; }
         }
 
         private static void SetStartupEnabled(bool enabled)
@@ -323,8 +313,7 @@ internal static class Program
             try
             {
                 using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
-                if (key is null)
-                    return;
+                if (key is null) return;
 
                 if (enabled)
                 {
@@ -333,13 +322,9 @@ internal static class Program
                         key.SetValue(StartupValueName, $"\"{exe}\"");
                 }
                 else
-                {
                     key.DeleteValue(StartupValueName, false);
-                }
             }
-            catch
-            {
-            }
+            catch { }
         }
 
         private static string? GetActivePlan()
@@ -353,6 +338,7 @@ internal static class Program
         {
             try
             {
+                var oemEncoding = Encoding.GetEncoding(CultureInfo.CurrentCulture.TextInfo.OEMCodePage);
                 using var process = Process.Start(new ProcessStartInfo
                 {
                     FileName = "powercfg.exe",
@@ -360,20 +346,17 @@ internal static class Program
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
+                    StandardOutputEncoding = oemEncoding,
+                    StandardErrorEncoding = oemEncoding,
                     CreateNoWindow = true
                 });
 
-                if (process is null)
-                    return string.Empty;
-
+                if (process is null) return string.Empty;
                 var output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit(3000);
                 return output;
             }
-            catch
-            {
-                return string.Empty;
-            }
+            catch { return string.Empty; }
         }
 
         private static string TrimNotifyText(string value) => value.Length <= 63 ? value : value[..63];
