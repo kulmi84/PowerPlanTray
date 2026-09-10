@@ -9,9 +9,9 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string HighPerformance = "fa69b2a8-72a7-4195-9fdd-846be554f31a";
-    private const string HpOptimized = "fb5220ff-7e1a-47aa-9a42-50ffbf45c673";
-    private const string QuietRemote = "708c8ab9-7ca4-4f43-9652-2809432ef837";
+    private const string HighPerformanceFallback = "fa69b2a8-72a7-4195-9fdd-846be554f31a";
+    private const string HpOptimizedFallback = "fb5220ff-7e1a-47aa-9a42-50ffbf45c673";
+    private const string QuietRemoteFallback = "708c8ab9-7ca4-4f43-9652-2809432ef837";
 
     [STAThread]
     private static void Main() { ApplicationConfiguration.Initialize(); Application.Run(new TrayApplicationContext()); }
@@ -22,12 +22,21 @@ internal static class Program
         private readonly ToolStripMenuItem _highItem, _hpItem, _quietItem;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly Icon _boltIcon, _hpIcon, _quietIcon;
+        private readonly string _highPerformance;
+        private readonly string _hpOptimized;
+        private readonly string _quietRemote;
 
         public TrayApplicationContext()
         {
-            _highItem = new ToolStripMenuItem("Höchstleistung", null, (_, _) => SetPlan(HighPerformance));
-            _hpItem = new ToolStripMenuItem("HP Optimized", null, (_, _) => SetPlan(HpOptimized));
-            _quietItem = new ToolStripMenuItem("Leise / Remote", null, (_, _) => SetPlan(QuietRemote));
+            // GUIDs werden beim Start anhand der Namen ermittelt.
+            // Die bekannten GUIDs dienen nur als Fallback, falls ein Name nicht gefunden wird.
+            _highPerformance = ResolvePlanGuid("Höchstleistung HP", HighPerformanceFallback);
+            _hpOptimized = ResolvePlanGuid("HP Optimized (Modern Standby)", HpOptimizedFallback);
+            _quietRemote = ResolvePlanGuid("Leise / Remote", QuietRemoteFallback);
+
+            _highItem = new ToolStripMenuItem("Höchstleistung", null, (_, _) => SetPlan(_highPerformance));
+            _hpItem = new ToolStripMenuItem("HP Optimized", null, (_, _) => SetPlan(_hpOptimized));
+            _quietItem = new ToolStripMenuItem("Leise / Remote", null, (_, _) => SetPlan(_quietRemote));
 
             var menu = new ContextMenuStrip();
             menu.Items.AddRange(new ToolStripItem[]
@@ -80,9 +89,9 @@ internal static class Program
         private void ToggleHighHp()
         {
             var current = GetActivePlan();
-            SetPlan(string.Equals(current, HighPerformance, StringComparison.OrdinalIgnoreCase)
-                ? HpOptimized
-                : HighPerformance);
+            SetPlan(string.Equals(current, _highPerformance, StringComparison.OrdinalIgnoreCase)
+                ? _hpOptimized
+                : _highPerformance);
         }
 
         private void SetPlan(string guid)
@@ -95,9 +104,9 @@ internal static class Program
         {
             var current = GetActivePlan();
 
-            _highItem.Checked = string.Equals(current, HighPerformance, StringComparison.OrdinalIgnoreCase);
-            _hpItem.Checked = string.Equals(current, HpOptimized, StringComparison.OrdinalIgnoreCase);
-            _quietItem.Checked = string.Equals(current, QuietRemote, StringComparison.OrdinalIgnoreCase);
+            _highItem.Checked = string.Equals(current, _highPerformance, StringComparison.OrdinalIgnoreCase);
+            _hpItem.Checked = string.Equals(current, _hpOptimized, StringComparison.OrdinalIgnoreCase);
+            _quietItem.Checked = string.Equals(current, _quietRemote, StringComparison.OrdinalIgnoreCase);
 
             if (_highItem.Checked)
             {
@@ -116,6 +125,29 @@ internal static class Program
                     ? "PowerPlanTray - HP Optimized"
                     : "PowerPlanTray";
             }
+        }
+
+        private static string ResolvePlanGuid(string planName, string fallbackGuid)
+        {
+            var output = RunPowerCfg("/list");
+            if (string.IsNullOrWhiteSpace(output))
+                return fallbackGuid;
+
+            foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var guidMatch = Regex.Match(line,
+                    "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+                var nameMatch = Regex.Match(line, @"\((?<name>[^)]*)\)");
+
+                if (!guidMatch.Success || !nameMatch.Success)
+                    continue;
+
+                var currentName = nameMatch.Groups["name"].Value.Trim();
+                if (string.Equals(currentName, planName, StringComparison.OrdinalIgnoreCase))
+                    return guidMatch.Value;
+            }
+
+            return fallbackGuid;
         }
 
         private static Icon CreateBoltIcon()
