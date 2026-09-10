@@ -2,7 +2,6 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -12,10 +11,12 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.3.0";
+    private const string AppVersion = "1.4.0";
     private const string SettingsDirectoryName = "PowerPlanTray";
     private const string SettingsFileName = "settings.json";
     private const string StartupValueName = "PowerPlanTray";
+    private const string WindowsHighPerformanceGuid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
+    private const string WindowsHighPerformanceAlias = "SCHEME_MIN";
 
     [STAThread]
     private static void Main()
@@ -106,8 +107,8 @@ internal static class Program
 
             foreach (var plan in _plans)
             {
-                var capturedGuid = plan.Guid;
-                var item = new ToolStripMenuItem(plan.Name, null, (_, _) => SetPlan(capturedGuid))
+                var capturedPlan = plan;
+                var item = new ToolStripMenuItem(plan.Name, null, (_, _) => SetPlan(capturedPlan))
                 {
                     Checked = string.Equals(current, plan.Guid, StringComparison.OrdinalIgnoreCase)
                 };
@@ -130,13 +131,13 @@ internal static class Program
 
             var current = GetActivePlan();
             SetPlan(string.Equals(current, planA.Guid, StringComparison.OrdinalIgnoreCase)
-                ? planB.Guid
-                : planA.Guid);
+                ? planB
+                : planA);
         }
 
-        private void SetPlan(string guid)
+        private void SetPlan(PowerPlan plan)
         {
-            RunPowerCfg($"/setactive {guid}");
+            RunPowerCfg($"/setactive {plan.ActivateTarget}");
             RefreshState();
         }
 
@@ -233,7 +234,8 @@ internal static class Program
 
         private Icon GetIconForPlan(string? planName)
         {
-            if (planName?.Equals("Höchstleistung HP", StringComparison.OrdinalIgnoreCase) == true)
+            if (planName?.Equals("Höchstleistung HP", StringComparison.OrdinalIgnoreCase) == true ||
+                planName?.Equals("Windows Höchstleistung", StringComparison.OrdinalIgnoreCase) == true)
                 return _boltIcon;
             if (planName?.StartsWith("HP Optimized", StringComparison.OrdinalIgnoreCase) == true)
                 return _hpIcon;
@@ -246,19 +248,28 @@ internal static class Program
         {
             var result = new List<PowerPlan>();
             var output = RunPowerCfg("/list");
-            if (string.IsNullOrWhiteSpace(output))
-                return result;
 
-            foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            if (!string.IsNullOrWhiteSpace(output))
             {
-                var guidMatch = Regex.Match(line,
-                    "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-                var nameMatch = Regex.Match(line, @"\((?<name>[^)]*)\)");
-                if (!guidMatch.Success || !nameMatch.Success)
-                    continue;
+                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var guidMatch = Regex.Match(line,
+                        "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+                    var nameMatch = Regex.Match(line, @"\((?<name>[^)]*)\)");
+                    if (!guidMatch.Success || !nameMatch.Success)
+                        continue;
 
-                result.Add(new PowerPlan(guidMatch.Value, nameMatch.Groups["name"].Value.Trim()));
+                    var guid = guidMatch.Value;
+                    if (guid.Equals(WindowsHighPerformanceGuid, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    result.Add(new PowerPlan(guid, nameMatch.Groups["name"].Value.Trim(), guid));
+                }
             }
+
+            // Windows' eingebautes Höchstleistungsschema wird auf manchen Modern-Standby-Systemen
+            // nicht dauerhaft von /list angezeigt. Deshalb bleibt es als fester Eintrag verfügbar.
+            result.Add(new PowerPlan(WindowsHighPerformanceGuid, "Windows Höchstleistung", WindowsHighPerformanceAlias));
 
             return result;
         }
@@ -461,7 +472,7 @@ internal static class Program
         public string? TogglePlanB { get; set; }
     }
 
-    private sealed record PowerPlan(string Guid, string Name)
+    private sealed record PowerPlan(string Guid, string Name, string ActivateTarget)
     {
         public override string ToString() => Name;
     }
