@@ -1,7 +1,10 @@
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
@@ -9,68 +12,60 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string HighPerformanceFallback = "fa69b2a8-72a7-4195-9fdd-846be554f31a";
-    private const string HpOptimizedFallback = "fb5220ff-7e1a-47aa-9a42-50ffbf45c673";
-    private const string QuietRemoteFallback = "708c8ab9-7ca4-4f43-9652-2809432ef837";
+    private const string AppVersion = "1.3.0";
+    private const string SettingsDirectoryName = "PowerPlanTray";
+    private const string SettingsFileName = "settings.json";
+    private const string StartupValueName = "PowerPlanTray";
 
     [STAThread]
-    private static void Main() { ApplicationConfiguration.Initialize(); Application.Run(new TrayApplicationContext()); }
+    private static void Main()
+    {
+        ApplicationConfiguration.Initialize();
+        Application.Run(new TrayApplicationContext());
+    }
 
     private sealed class TrayApplicationContext : ApplicationContext
     {
         private readonly NotifyIcon _notifyIcon;
-        private readonly ToolStripMenuItem _highItem, _hpItem, _quietItem;
+        private readonly ContextMenuStrip _menu;
         private readonly System.Windows.Forms.Timer _timer;
-        private readonly Icon _boltIcon, _hpIcon, _quietIcon;
-        private readonly string _highPerformance;
-        private readonly string _hpOptimized;
-        private readonly string _quietRemote;
+        private readonly Icon _boltIcon;
+        private readonly Icon _hpIcon;
+        private readonly Icon _quietIcon;
+        private readonly Icon _genericIcon;
+        private AppSettings _settings;
+        private List<PowerPlan> _plans = new();
 
         public TrayApplicationContext()
         {
-            // GUIDs werden beim Start anhand der Namen ermittelt.
-            // Die bekannten GUIDs dienen nur als Fallback, falls ein Name nicht gefunden wird.
-            _highPerformance = ResolvePlanGuid("Höchstleistung HP", HighPerformanceFallback);
-            _hpOptimized = ResolvePlanGuid("HP Optimized (Modern Standby)", HpOptimizedFallback);
-            _quietRemote = ResolvePlanGuid("Leise / Remote", QuietRemoteFallback);
-
-            _highItem = new ToolStripMenuItem("Höchstleistung", null, (_, _) => SetPlan(_highPerformance));
-            _hpItem = new ToolStripMenuItem("HP Optimized", null, (_, _) => SetPlan(_hpOptimized));
-            _quietItem = new ToolStripMenuItem("Leise / Remote", null, (_, _) => SetPlan(_quietRemote));
-
-            var menu = new ContextMenuStrip();
-            menu.Items.AddRange(new ToolStripItem[]
-            {
-                _highItem,
-                _hpItem,
-                _quietItem,
-                new ToolStripSeparator(),
-                new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread())
-            });
+            _settings = LoadSettings();
+            _plans = GetPowerPlans();
+            EnsureToggleDefaults();
 
             _boltIcon = CreateBoltIcon();
             _hpIcon = CreateCrossedBoltIcon();
             _quietIcon = CreateQuietIcon();
+            _genericIcon = CreateGenericIcon();
 
+            _menu = new ContextMenuStrip();
             _notifyIcon = new NotifyIcon
             {
-                Icon = _boltIcon,
-                Text = "PowerPlanTray",
-                ContextMenuStrip = menu,
+                Icon = _genericIcon,
+                Text = $"PowerPlanTray v{AppVersion}",
+                ContextMenuStrip = _menu,
                 Visible = true
             };
 
-            // Linksklick bleibt bewusst nur der schnelle Wechsel
-            // zwischen Höchstleistung und HP Optimized.
             _notifyIcon.MouseClick += (_, e) =>
             {
                 if (e.Button == MouseButtons.Left)
-                    ToggleHighHp();
+                    ToggleSelectedPlans();
             };
 
             _timer = new System.Windows.Forms.Timer { Interval = 5000 };
             _timer.Tick += (_, _) => RefreshState();
             _timer.Start();
+
             RefreshState();
         }
 
@@ -80,18 +75,63 @@ internal static class Program
             _timer.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
+            _menu.Dispose();
             _boltIcon.Dispose();
             _hpIcon.Dispose();
             _quietIcon.Dispose();
+            _genericIcon.Dispose();
             base.ExitThreadCore();
         }
 
-        private void ToggleHighHp()
+        private void RefreshState()
         {
+            _plans = GetPowerPlans();
+            EnsureToggleDefaults();
+            RebuildMenu();
+
             var current = GetActivePlan();
-            SetPlan(string.Equals(current, _highPerformance, StringComparison.OrdinalIgnoreCase)
-                ? _hpOptimized
-                : _highPerformance);
+            var activePlan = _plans.FirstOrDefault(p =>
+                string.Equals(p.Guid, current, StringComparison.OrdinalIgnoreCase));
+
+            _notifyIcon.Icon = GetIconForPlan(activePlan?.Name);
+            _notifyIcon.Text = activePlan is null
+                ? $"PowerPlanTray v{AppVersion}"
+                : TrimNotifyText($"PowerPlanTray - {activePlan.Name}");
+        }
+
+        private void RebuildMenu()
+        {
+            _menu.Items.Clear();
+            var current = GetActivePlan();
+
+            foreach (var plan in _plans)
+            {
+                var capturedGuid = plan.Guid;
+                var item = new ToolStripMenuItem(plan.Name, null, (_, _) => SetPlan(capturedGuid))
+                {
+                    Checked = string.Equals(current, plan.Guid, StringComparison.OrdinalIgnoreCase)
+                };
+                _menu.Items.Add(item);
+            }
+
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(new ToolStripMenuItem("Einstellungen...", null, (_, _) => ShowSettings()));
+            _menu.Items.Add(new ToolStripMenuItem($"PowerPlanTray v{AppVersion}") { Enabled = false });
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()));
+        }
+
+        private void ToggleSelectedPlans()
+        {
+            var planA = FindPlanByGuid(_settings.TogglePlanA);
+            var planB = FindPlanByGuid(_settings.TogglePlanB);
+            if (planA is null || planB is null)
+                return;
+
+            var current = GetActivePlan();
+            SetPlan(string.Equals(current, planA.Guid, StringComparison.OrdinalIgnoreCase)
+                ? planB.Guid
+                : planA.Guid);
         }
 
         private void SetPlan(string guid)
@@ -100,186 +140,195 @@ internal static class Program
             RefreshState();
         }
 
-        private void RefreshState()
+        private void ShowSettings()
         {
-            var current = GetActivePlan();
+            _plans = GetPowerPlans();
+            EnsureToggleDefaults();
 
-            _highItem.Checked = string.Equals(current, _highPerformance, StringComparison.OrdinalIgnoreCase);
-            _hpItem.Checked = string.Equals(current, _hpOptimized, StringComparison.OrdinalIgnoreCase);
-            _quietItem.Checked = string.Equals(current, _quietRemote, StringComparison.OrdinalIgnoreCase);
+            using var form = new Form
+            {
+                Text = $"PowerPlanTray v{AppVersion} - Einstellungen",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterScreen,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                ShowInTaskbar = false,
+                ClientSize = new Size(430, 230)
+            };
 
-            if (_highItem.Checked)
+            var labelA = new Label { Text = "Linksklick Plan A:", AutoSize = true, Location = new Point(18, 22) };
+            var comboA = CreatePlanComboBox(new Point(155, 18));
+            var labelB = new Label { Text = "Linksklick Plan B:", AutoSize = true, Location = new Point(18, 62) };
+            var comboB = CreatePlanComboBox(new Point(155, 58));
+            var startup = new CheckBox
             {
-                _notifyIcon.Icon = _boltIcon;
-                _notifyIcon.Text = "PowerPlanTray - Höchstleistung";
-            }
-            else if (_quietItem.Checked)
+                Text = "Mit Windows starten",
+                AutoSize = true,
+                Location = new Point(18, 108),
+                Checked = IsStartupEnabled()
+            };
+            var version = new Label
             {
-                _notifyIcon.Icon = _quietIcon;
-                _notifyIcon.Text = "PowerPlanTray - Leise / Remote";
-            }
-            else
-            {
-                _notifyIcon.Icon = _hpIcon;
-                _notifyIcon.Text = _hpItem.Checked
-                    ? "PowerPlanTray - HP Optimized"
-                    : "PowerPlanTray";
-            }
+                Text = $"Version {AppVersion}",
+                AutoSize = true,
+                Location = new Point(18, 150)
+            };
+            var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(252, 184), Size = new Size(75, 28) };
+            var cancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(335, 184), Size = new Size(75, 28) };
+
+            comboA.SelectedItem = _plans.FirstOrDefault(p => string.Equals(p.Guid, _settings.TogglePlanA, StringComparison.OrdinalIgnoreCase));
+            comboB.SelectedItem = _plans.FirstOrDefault(p => string.Equals(p.Guid, _settings.TogglePlanB, StringComparison.OrdinalIgnoreCase));
+
+            form.Controls.AddRange(new Control[] { labelA, comboA, labelB, comboB, startup, version, ok, cancel });
+            form.AcceptButton = ok;
+            form.CancelButton = cancel;
+
+            if (form.ShowDialog() != DialogResult.OK)
+                return;
+
+            if (comboA.SelectedItem is PowerPlan selectedA)
+                _settings.TogglePlanA = selectedA.Guid;
+            if (comboB.SelectedItem is PowerPlan selectedB)
+                _settings.TogglePlanB = selectedB.Guid;
+
+            SaveSettings(_settings);
+            SetStartupEnabled(startup.Checked);
+            RefreshState();
         }
 
-        private static string ResolvePlanGuid(string planName, string fallbackGuid)
+        private ComboBox CreatePlanComboBox(Point location)
         {
+            var combo = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = location,
+                Size = new Size(255, 28)
+            };
+            foreach (var plan in _plans)
+                combo.Items.Add(plan);
+            return combo;
+        }
+
+        private void EnsureToggleDefaults()
+        {
+            if (_plans.Count == 0)
+                return;
+
+            if (FindPlanByGuid(_settings.TogglePlanA) is null)
+                _settings.TogglePlanA = _plans.FirstOrDefault(p => p.Name.Equals("Höchstleistung HP", StringComparison.OrdinalIgnoreCase))?.Guid
+                    ?? _plans[0].Guid;
+
+            if (FindPlanByGuid(_settings.TogglePlanB) is null)
+                _settings.TogglePlanB = _plans.FirstOrDefault(p => p.Name.StartsWith("HP Optimized", StringComparison.OrdinalIgnoreCase))?.Guid
+                    ?? _plans.FirstOrDefault(p => !string.Equals(p.Guid, _settings.TogglePlanA, StringComparison.OrdinalIgnoreCase))?.Guid
+                    ?? _plans[0].Guid;
+
+            SaveSettings(_settings);
+        }
+
+        private PowerPlan? FindPlanByGuid(string? guid) =>
+            string.IsNullOrWhiteSpace(guid)
+                ? null
+                : _plans.FirstOrDefault(p => string.Equals(p.Guid, guid, StringComparison.OrdinalIgnoreCase));
+
+        private Icon GetIconForPlan(string? planName)
+        {
+            if (planName?.Equals("Höchstleistung HP", StringComparison.OrdinalIgnoreCase) == true)
+                return _boltIcon;
+            if (planName?.StartsWith("HP Optimized", StringComparison.OrdinalIgnoreCase) == true)
+                return _hpIcon;
+            if (planName?.Equals("Leise / Remote", StringComparison.OrdinalIgnoreCase) == true)
+                return _quietIcon;
+            return _genericIcon;
+        }
+
+        private static List<PowerPlan> GetPowerPlans()
+        {
+            var result = new List<PowerPlan>();
             var output = RunPowerCfg("/list");
             if (string.IsNullOrWhiteSpace(output))
-                return fallbackGuid;
+                return result;
 
             foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var guidMatch = Regex.Match(line,
                     "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
                 var nameMatch = Regex.Match(line, @"\((?<name>[^)]*)\)");
-
                 if (!guidMatch.Success || !nameMatch.Success)
                     continue;
 
-                var currentName = nameMatch.Groups["name"].Value.Trim();
-                if (string.Equals(currentName, planName, StringComparison.OrdinalIgnoreCase))
-                    return guidMatch.Value;
+                result.Add(new PowerPlan(guidMatch.Value, nameMatch.Groups["name"].Value.Trim()));
             }
 
-            return fallbackGuid;
+            return result;
         }
 
-        private static Icon CreateBoltIcon()
+        private static AppSettings LoadSettings()
         {
-            // Höchstleistung: großer weißer Kreis mit schwarzem Blitz.
-            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bitmap))
+            try
             {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.Clear(Color.Transparent);
-
-                using var white = new SolidBrush(Color.White);
-                using var black = new SolidBrush(Color.Black);
-
-                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
-
-                PointF[] bolt =
-                {
-                    new(18.8f, 3.0f),
-                    new(7.0f, 17.2f),
-                    new(13.8f, 17.2f),
-                    new(11.5f, 29.0f),
-                    new(25.4f, 12.6f),
-                    new(18.0f, 12.6f)
-                };
-                g.FillPolygon(black, bolt);
+                var path = GetSettingsPath();
+                if (!File.Exists(path))
+                    return new AppSettings();
+                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(path)) ?? new AppSettings();
             }
-            return ToIcon(bitmap);
-        }
-
-        private static Icon CreateCrossedBoltIcon()
-        {
-            // HP Optimized: gleicher großer Kreis, Blitz mit diagonalem Strich.
-            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bitmap))
+            catch
             {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.Clear(Color.Transparent);
-
-                using var white = new SolidBrush(Color.White);
-                using var black = new SolidBrush(Color.Black);
-                using var slashPen = new Pen(Color.Black, 3.8f)
-                {
-                    StartCap = LineCap.Round,
-                    EndCap = LineCap.Round
-                };
-
-                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
-
-                PointF[] bolt =
-                {
-                    new(18.8f, 3.0f),
-                    new(7.0f, 17.2f),
-                    new(13.8f, 17.2f),
-                    new(11.5f, 29.0f),
-                    new(25.4f, 12.6f),
-                    new(18.0f, 12.6f)
-                };
-                g.FillPolygon(black, bolt);
-                g.DrawLine(slashPen, 6.3f, 6.3f, 25.7f, 25.7f);
+                return new AppSettings();
             }
-            return ToIcon(bitmap);
         }
 
-        private static Icon CreateQuietIcon()
+        private static void SaveSettings(AppSettings settings)
         {
-            // Leise / Remote: drei weiße Z ohne Kreis oder Rand.
-            // Die Zeichen nutzen fast die komplette Tray-Fläche und werden
-            // als feste Geometrie gezeichnet, damit sie auch bei 16 px klar bleiben.
-            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            using (var g = Graphics.FromImage(bitmap))
+            try
             {
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                g.Clear(Color.Transparent);
-
-                using var large = new Pen(Color.White, 5.2f)
-                {
-                    StartCap = LineCap.Round,
-                    EndCap = LineCap.Round,
-                    LineJoin = LineJoin.Round
-                };
-                using var medium = new Pen(Color.White, 4.0f)
-                {
-                    StartCap = LineCap.Round,
-                    EndCap = LineCap.Round,
-                    LineJoin = LineJoin.Round
-                };
-                using var small = new Pen(Color.White, 3.2f)
-                {
-                    StartCap = LineCap.Round,
-                    EndCap = LineCap.Round,
-                    LineJoin = LineJoin.Round
-                };
-
-                // Großes Z oben/rechts – dominant und möglichst groß.
-                g.DrawLines(large, new[]
-                {
-                    new PointF(14.5f, 3.2f),
-                    new PointF(29.0f, 3.2f),
-                    new PointF(14.0f, 18.0f),
-                    new PointF(28.8f, 18.0f)
-                });
-
-                // Mittleres z in der Mitte.
-                g.DrawLines(medium, new[]
-                {
-                    new PointF(8.0f, 14.0f),
-                    new PointF(19.0f, 14.0f),
-                    new PointF(8.0f, 24.0f),
-                    new PointF(19.2f, 24.0f)
-                });
-
-                // Kleines z unten/links.
-                g.DrawLines(small, new[]
-                {
-                    new PointF(2.5f, 22.0f),
-                    new PointF(10.2f, 22.0f),
-                    new PointF(2.8f, 29.0f),
-                    new PointF(10.5f, 29.0f)
-                });
+                var path = GetSettingsPath();
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
             }
-            return ToIcon(bitmap);
+            catch
+            {
+            }
         }
 
-        private static Icon ToIcon(Bitmap bitmap)
+        private static string GetSettingsPath() =>
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsDirectoryName, SettingsFileName);
+
+        private static bool IsStartupEnabled()
         {
-            var hIcon = bitmap.GetHicon();
-            try { return (Icon)Icon.FromHandle(hIcon).Clone(); }
-            finally { DestroyIcon(hIcon); }
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", false);
+                return key?.GetValue(StartupValueName) is string;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void SetStartupEnabled(bool enabled)
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
+                if (key is null)
+                    return;
+
+                if (enabled)
+                {
+                    var exe = Environment.ProcessPath;
+                    if (!string.IsNullOrWhiteSpace(exe))
+                        key.SetValue(StartupValueName, $"\"{exe}\"");
+                }
+                else
+                {
+                    key.DeleteValue(StartupValueName, false);
+                }
+            }
+            catch
+            {
+            }
         }
 
         private static string? GetActivePlan()
@@ -303,7 +352,9 @@ internal static class Program
                     CreateNoWindow = true
                 });
 
-                if (process is null) return string.Empty;
+                if (process is null)
+                    return string.Empty;
+
                 var output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit(3000);
                 return output;
@@ -314,7 +365,104 @@ internal static class Program
             }
         }
 
+        private static string TrimNotifyText(string value) => value.Length <= 63 ? value : value[..63];
+
+        private static Icon CreateBoltIcon()
+        {
+            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.Clear(Color.Transparent);
+                using var white = new SolidBrush(Color.White);
+                using var black = new SolidBrush(Color.Black);
+                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
+                PointF[] bolt =
+                {
+                    new(18.8f, 3.0f), new(7.0f, 17.2f), new(13.8f, 17.2f),
+                    new(11.5f, 29.0f), new(25.4f, 12.6f), new(18.0f, 12.6f)
+                };
+                g.FillPolygon(black, bolt);
+            }
+            return ToIcon(bitmap);
+        }
+
+        private static Icon CreateCrossedBoltIcon()
+        {
+            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.Clear(Color.Transparent);
+                using var white = new SolidBrush(Color.White);
+                using var black = new SolidBrush(Color.Black);
+                using var slashPen = new Pen(Color.Black, 3.8f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
+                PointF[] bolt =
+                {
+                    new(18.8f, 3.0f), new(7.0f, 17.2f), new(13.8f, 17.2f),
+                    new(11.5f, 29.0f), new(25.4f, 12.6f), new(18.0f, 12.6f)
+                };
+                g.FillPolygon(black, bolt);
+                g.DrawLine(slashPen, 6.3f, 6.3f, 25.7f, 25.7f);
+            }
+            return ToIcon(bitmap);
+        }
+
+        private static Icon CreateQuietIcon()
+        {
+            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                g.Clear(Color.Transparent);
+                using var large = new Pen(Color.White, 5.2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                using var medium = new Pen(Color.White, 4.0f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                using var small = new Pen(Color.White, 3.2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+                g.DrawLines(large, new[] { new PointF(14.5f, 3.2f), new PointF(29.0f, 3.2f), new PointF(14.0f, 18.0f), new PointF(28.8f, 18.0f) });
+                g.DrawLines(medium, new[] { new PointF(8.0f, 14.0f), new PointF(19.0f, 14.0f), new PointF(8.0f, 24.0f), new PointF(19.2f, 24.0f) });
+                g.DrawLines(small, new[] { new PointF(2.5f, 22.0f), new PointF(10.2f, 22.0f), new PointF(2.8f, 29.0f), new PointF(10.5f, 29.0f) });
+            }
+            return ToIcon(bitmap);
+        }
+
+        private static Icon CreateGenericIcon()
+        {
+            using var bitmap = new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bitmap))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+                using var white = new SolidBrush(Color.White);
+                using var black = new SolidBrush(Color.Black);
+                g.FillEllipse(white, 0.25f, 0.25f, 31.5f, 31.5f);
+                g.FillEllipse(black, 9f, 9f, 14f, 14f);
+            }
+            return ToIcon(bitmap);
+        }
+
+        private static Icon ToIcon(Bitmap bitmap)
+        {
+            var hIcon = bitmap.GetHicon();
+            try { return (Icon)Icon.FromHandle(hIcon).Clone(); }
+            finally { DestroyIcon(hIcon); }
+        }
+
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
+    }
+
+    private sealed class AppSettings
+    {
+        public string? TogglePlanA { get; set; }
+        public string? TogglePlanB { get; set; }
+    }
+
+    private sealed record PowerPlan(string Guid, string Name)
+    {
+        public override string ToString() => Name;
     }
 }
