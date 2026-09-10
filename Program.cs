@@ -9,7 +9,7 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string HighPerformance = "4d922812-1350-43fd-9a02-bd8cb10e3619";
+    private const string HighPerformance = "fa69b2a8-72a7-4195-9fdd-846be554f31a";
     private const string HpOptimized = "fb5220ff-7e1a-47aa-9a42-50ffbf45c673";
     private const string QuietRemote = "708c8ab9-7ca4-4f43-9652-2809432ef837";
 
