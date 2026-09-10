@@ -2,7 +2,7 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Aktuelle Version: **1.4.2**
+Aktuelle Version: **1.5.0**
 
 ## Funktionen
 
@@ -12,6 +12,8 @@ Aktuelle Version: **1.4.2**
 - Linksklick auf das Tray-Symbol: zwischen zwei frei wählbaren Energieplänen umschalten
 - Einstellungen werden unter `%APPDATA%\PowerPlanTray\settings.json` gespeichert
 - Optionaler Autostart über **Mit Windows starten**
+- Optionaler fester Energieplan beim Windows-Start
+- Alternativ kann der zuletzt aktive Energieplan weiterverwendet werden
 - Statusaktualisierung alle 5 Sekunden
 - Portable, selbstständige Single-EXE für Windows x64
 
@@ -51,15 +53,19 @@ Zusätzlich stehen dort zur Verfügung:
 
 Über **Einstellungen...** können folgende Optionen geändert werden:
 
-- Linksklick Plan A
-- Linksklick Plan B
-- Mit Windows starten
+- **Linksklick Plan A**
+- **Linksklick Plan B**
+- **Mit Windows starten**
+- **Energiesparplan beim Windows-Start** – legt einen festen Energieplan fest, der beim Windows-Autostart aktiviert wird
+- **Letzten Energiesparplan verwenden** – lässt den zuletzt aktiven Windows-Energieplan unverändert; die feste Startplan-Auswahl ist dann deaktiviert
 
 ![PowerPlanTray Einstellungen](docs/powerplantray-settings-v1.4.2.png)
 
 Der Autostart wird benutzerspezifisch unter folgendem Registry-Pfad verwaltet:
 
 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
+
+Die Startplan-Logik wird nur beim Windows-Autostart von PowerPlanTray ausgeführt. Wird PowerPlanTray später manuell gestartet, wird der aktuellen Energieplan dadurch nicht verändert.
 
 PowerPlanTray benötigt dafür keine Änderung an systemweiten Autostart-Einstellungen.
 
@@ -77,7 +83,7 @@ Das Anwendungs- und Einstellungsfenster verwendet weiterhin das normale PowerPla
 
 ## Verhalten von PowerPlanTray
 
-PowerPlanTray verändert beim Umschalten **keine einzelnen Energieplaneinstellungen**. Ein ausgewählter Plan wird ausschließlich über
+PowerPlanTray verändert beim normalen Umschalten **keine einzelnen Energieplaneinstellungen**. Ein ausgewählter Plan wird ausschließlich über
 
 ```text
 powercfg /setactive <GUID oder Alias>
@@ -85,7 +91,7 @@ powercfg /setactive <GUID oder Alias>
 
 aktiviert.
 
-Ausnahme außerhalb des eigentlichen Energieplan-Umschaltens: Wenn die Option **Mit Windows starten** aktiviert oder deaktiviert wird, verwaltet PowerPlanTray den eigenen Eintrag unter `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+Beim Windows-Autostart kann PowerPlanTray abhängig von der gewählten Einstellung entweder einen festgelegten Energieplan aktivieren oder den zuletzt aktiven Energieplan unverändert lassen.
 
 Modern Standby und vorhandene Energieplanparameter werden vom Tool nicht verändert.
 
@@ -104,6 +110,13 @@ Die EXE liegt anschließend unter:
 ## GitHub Actions
 
 Bei Änderungen auf dem Hauptbranch erstellt GitHub Actions automatisch eine portable Windows-x64-Version. Nach erfolgreichem Lauf steht sie im jeweiligen Workflow unter **Artifacts** als `PowerPlanTray-win-x64` bereit.
+
+## Änderungen in 1.5.0
+
+- neuer auswählbarer **Energiesparplan beim Windows-Start**
+- neue Option **Letzten Energiesparplan verwenden**
+- feste Startplan-Auswahl wird deaktiviert, wenn der letzte Energieplan verwendet werden soll
+- Startplan wird ausschließlich beim Windows-Autostart angewendet
 
 ## Änderungen in 1.4.2
 
