@@ -39,6 +39,8 @@ In den Einstellungen können zwei Energiepläne als **Plan A** und **Plan B** fe
 
 Das Kontextmenü zeigt alle erkannten Energiepläne sowie **Windows Höchstleistung**. Der aktive Plan wird mit einem Haken markiert.
 
+![PowerPlanTray Kontextmenü](docs/powerplantray-menu-v1.4.2.png)
+
 Zusätzlich stehen dort zur Verfügung:
 
 - Einstellungen
@@ -52,6 +54,8 @@ Zusätzlich stehen dort zur Verfügung:
 - Linksklick Plan A
 - Linksklick Plan B
 - Mit Windows starten
+
+![PowerPlanTray Einstellungen](docs/powerplantray-settings-v1.4.2.png)
 
 Der Autostart wird benutzerspezifisch unter folgendem Registry-Pfad verwaltet:
 
