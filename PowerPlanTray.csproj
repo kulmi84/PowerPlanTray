@@ -7,10 +7,15 @@
     <Nullable>enable</Nullable>
     <AssemblyName>PowerPlanTray</AssemblyName>
     <RootNamespace>PowerPlanTray</RootNamespace>
-    <Version>1.4.0</Version>
-    <AssemblyVersion>1.4.0.0</AssemblyVersion>
-    <FileVersion>1.4.0.0</FileVersion>
+    <Version>1.4.1</Version>
+    <AssemblyVersion>1.4.1.0</AssemblyVersion>
+    <FileVersion>1.4.1.0</FileVersion>
+    <ApplicationIcon>assets\PowerPlanTray.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <Target Name="GenerateApplicationIcon" BeforeTargets="CoreCompile">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;[IO.File]::WriteAllBytes('$(MSBuildProjectDirectory)\assets\PowerPlanTray.ico',[Convert]::FromBase64String([IO.File]::ReadAllText('$(MSBuildProjectDirectory)\assets\PowerPlanTray.ico.b64')))&quot;" />
+  </Target>
 
   <ItemGroup>
     <EmbeddedResource Include="assets\bolt-white.svg" />
