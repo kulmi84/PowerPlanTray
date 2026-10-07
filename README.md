@@ -41,7 +41,7 @@ In den Einstellungen können zwei Energiepläne als **Plan A** und **Plan B** fe
 
 Das Kontextmenü zeigt alle erkannten Energiepläne sowie **Windows Höchstleistung**. Der aktive Plan wird mit einem Haken markiert.
 
-![PowerPlanTray Kontextmenü](docs/powerplantray-menu-v1.4.2.png)
+![PowerPlanTray Kontextmenü](docs/powerplantray-menu-v1.5.0.png)
 
 Zusätzlich stehen dort zur Verfügung:
 
@@ -59,7 +59,7 @@ Zusätzlich stehen dort zur Verfügung:
 - **Energiesparplan beim Windows-Start** – legt einen festen Energieplan fest, der beim Windows-Autostart aktiviert wird
 - **Letzten Energiesparplan verwenden** – lässt den zuletzt aktiven Windows-Energieplan unverändert; die feste Startplan-Auswahl ist dann deaktiviert
 
-![PowerPlanTray Einstellungen](docs/powerplantray-settings-v1.4.2.png)
+![PowerPlanTray Einstellungen](docs/powerplantray-settings-v1.5.0.png)
 
 Der Autostart wird benutzerspezifisch unter folgendem Registry-Pfad verwaltet:
 
