@@ -34,6 +34,7 @@ internal static class Program
         private readonly NotifyIcon _notifyIcon;
         private readonly ContextMenuStrip _menu;
         private readonly System.Windows.Forms.Timer _timer;
+        private readonly CodexStandbyGuard _codexGuard;
         private readonly Icon _boltIcon;
         private readonly Icon _windowsBoltIcon;
         private readonly Icon _hpIcon;
@@ -45,6 +46,8 @@ internal static class Program
         public TrayApplicationContext(bool startedWithWindows)
         {
             _settings = LoadSettings();
+            _codexGuard = new CodexStandbyGuard();
+            _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
             _plans = GetPowerPlans();
             EnsureToggleDefaults();
             EnsureStartupDefaults();
@@ -83,6 +86,7 @@ internal static class Program
         {
             _timer.Stop();
             _timer.Dispose();
+            _codexGuard.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _menu.Dispose();
@@ -119,6 +123,29 @@ internal static class Program
                     Checked = string.Equals(current, plan.Guid, StringComparison.OrdinalIgnoreCase)
                 });
             }
+            _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(new ToolStripMenuItem("Codex-Standby-Sperre aktivieren", null, (_, _) =>
+            {
+                _settings.CodexStandbyEnabled = !_settings.CodexStandbyEnabled;
+                SaveSettings(_settings);
+                _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
+                RebuildMenu();
+            }) { Checked = _settings.CodexStandbyEnabled });
+
+            var graceMenu = new ToolStripMenuItem("Codex-Nachlaufzeit") { Enabled = _settings.CodexStandbyEnabled };
+            foreach (var minutes in new[] { 5, 10, 15, 30, 60 })
+            {
+                var selectedMinutes = minutes;
+                graceMenu.DropDownItems.Add(new ToolStripMenuItem($"{minutes} Minuten", null, (_, _) =>
+                {
+                    _settings.CodexGraceMinutes = selectedMinutes;
+                    SaveSettings(_settings);
+                    _codexGuard.Configure(true, selectedMinutes);
+                    RebuildMenu();
+                }) { Checked = _settings.CodexGraceMinutes == minutes });
+            }
+            _menu.Items.Add(graceMenu);
+            _menu.Items.Add(new ToolStripMenuItem($"Codex: {_codexGuard.Status}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(new ToolStripMenuItem("Einstellungen...", null, (_, _) => ShowSettings()));
             _menu.Items.Add(new ToolStripMenuItem($"PowerPlanTray v{AppVersion}") { Enabled = false });
@@ -167,7 +194,7 @@ internal static class Program
                 MaximizeBox = false,
                 MinimizeBox = false,
                 ShowInTaskbar = false,
-                ClientSize = new Size(500, 335)
+                ClientSize = new Size(500, 445)
             };
 
             var labelA = new Label { Text = "Linksklick Plan A:", AutoSize = true, Location = new Point(18, 22) };
@@ -208,9 +235,46 @@ internal static class Program
             useLastPlan.CheckedChanged += (_, _) => UpdateStartupControls();
             UpdateStartupControls();
 
-            var version = new Label { Text = $"Version {AppVersion}", AutoSize = true, Location = new Point(18, 250) };
-            var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(322, 289), Size = new Size(75, 28) };
-            var cancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(405, 289), Size = new Size(75, 28) };
+            var codexEnabled = new CheckBox
+            {
+                Text = "Codex-Standby-Sperre aktivieren",
+                AutoSize = true,
+                Location = new Point(18, 244),
+                Checked = _settings.CodexStandbyEnabled
+            };
+            var graceLabel = new Label
+            {
+                Text = "Nachlaufzeit nach Codex-Aufgaben:",
+                AutoSize = true,
+                Location = new Point(18, 285)
+            };
+            var graceCombo = new ComboBox
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Location = new Point(245, 280),
+                Size = new Size(235, 28)
+            };
+            foreach (var minutes in new[] { 5, 10, 15, 30, 60 })
+                graceCombo.Items.Add(minutes);
+            graceCombo.SelectedItem = graceCombo.Items.Contains(_settings.CodexGraceMinutes)
+                ? _settings.CodexGraceMinutes : 15;
+            graceCombo.Enabled = codexEnabled.Checked;
+            graceLabel.Enabled = codexEnabled.Checked;
+            codexEnabled.CheckedChanged += (_, _) =>
+            {
+                graceCombo.Enabled = codexEnabled.Checked;
+                graceLabel.Enabled = codexEnabled.Checked;
+            };
+
+            var codexStatus = new Label
+            {
+                Text = $"Codex: {_codexGuard.Status}",
+                AutoSize = true,
+                Location = new Point(18, 325)
+            };
+            var version = new Label { Text = $"Version {AppVersion}", AutoSize = true, Location = new Point(18, 362) };
+            var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(322, 399), Size = new Size(75, 28) };
+            var cancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(405, 399), Size = new Size(75, 28) };
 
             comboA.SelectedItem = FindPlanByGuid(_settings.TogglePlanA);
             comboB.SelectedItem = FindPlanByGuid(_settings.TogglePlanB);
@@ -219,6 +283,7 @@ internal static class Program
             {
                 labelA, comboA, labelB, comboB, startup,
                 startupPlanLabel, startupPlanCombo, useLastPlan,
+                codexEnabled, graceLabel, graceCombo, codexStatus,
                 version, ok, cancel
             });
             form.AcceptButton = ok;
@@ -230,8 +295,11 @@ internal static class Program
             if (comboB.SelectedItem is PowerPlan selectedB) _settings.TogglePlanB = selectedB.Guid;
             if (startupPlanCombo.SelectedItem is PowerPlan selectedStartup) _settings.StartupPlan = selectedStartup.Guid;
             _settings.UseLastPlan = useLastPlan.Checked;
+            _settings.CodexStandbyEnabled = codexEnabled.Checked;
+            _settings.CodexGraceMinutes = graceCombo.SelectedItem is int selectedMinutes ? selectedMinutes : 15;
 
             SaveSettings(_settings);
+            _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
             SetStartupEnabled(startup.Checked);
             RefreshState();
         }
@@ -484,6 +552,8 @@ internal static class Program
         public string? TogglePlanB { get; set; }
         public string? StartupPlan { get; set; }
         public bool UseLastPlan { get; set; } = true;
+        public bool CodexStandbyEnabled { get; set; } = false;
+        public int CodexGraceMinutes { get; set; } = 15;
     }
 
     private sealed record PowerPlan(string Guid, string Name, string ActivateTarget)
