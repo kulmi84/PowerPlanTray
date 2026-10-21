@@ -2,7 +2,7 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Aktuelle Version: **1.5.0**
+Version dieses Pull Requests: **1.5.1 (Testversion)**. Letzte veröffentlichte Version: **1.5.0**.
 
 ## Funktionen
 
@@ -14,7 +14,7 @@ Aktuelle Version: **1.5.0**
 - Optionaler Autostart über **Mit Windows starten**
 - Optionaler fester Energieplan beim Windows-Start
 - Alternativ kann der zuletzt aktive Energieplan weiterverwendet werden
-- Statusaktualisierung alle 5 Sekunden
+- Statusaktualisierung alle 5 Sekunden (ohne das geöffnete Menü neu aufzubauen)
 - Optionaler Codex-Standby-Schutz: erkennt `task_started`, `task_complete` und `turn_aborted` in lokalen Codex-JSONL-Sitzungsprotokollen und verhindert den System-Standby während einer Aufgabe sowie während einer konfigurierbaren Nachlaufzeit (Standard: 15 Minuten; zunächst deaktiviert)
 - Portable, selbstständige Single-EXE für Windows x64
 
@@ -132,6 +132,14 @@ Die EXE liegt anschließend unter:
 ## GitHub Actions
 
 Bei Änderungen auf dem Hauptbranch erstellt GitHub Actions automatisch eine portable Windows-x64-Version. Nach erfolgreichem Lauf steht sie im jeweiligen Workflow unter **Artifacts** als `PowerPlanTray-win-x64` bereit.
+
+## Änderungen in 1.5.1 (Pull Request, Testversion)
+
+- Codex-Standby-Schutz während laufender Aufgaben mit konfigurierbarer Nachlaufzeit (Standard 15 Minuten)
+- Option direkt im Tray-Menü und im Einstellungsfenster
+- **Flackerfreies Kontextmenü:** Neuzeichnung nur beim Öffnen statt alle fünf Sekunden
+- Tray-Symbol und Tooltip werden nur bei tatsächlicher Änderung aktualisiert
+- Versionsnummern von App, Assembly und Windows-Datei auf 1.5.1 angehoben
 
 ## Änderungen in 1.5.0
 
