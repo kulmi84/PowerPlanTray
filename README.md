@@ -15,6 +15,7 @@ Aktuelle Version: **1.5.0**
 - Optionaler fester Energieplan beim Windows-Start
 - Alternativ kann der zuletzt aktive Energieplan weiterverwendet werden
 - Statusaktualisierung alle 5 Sekunden
+- Optionaler Codex-Standby-Schutz: erkennt `task_started`, `task_complete` und `turn_aborted` in lokalen Codex-JSONL-Sitzungsprotokollen und verhindert den System-Standby während einer Aufgabe sowie während einer konfigurierbaren Nachlaufzeit (Standard: 15 Minuten; zunächst deaktiviert)
 - Portable, selbstständige Single-EXE für Windows x64
 
 ## Energiepläne
@@ -45,6 +46,9 @@ Das Kontextmenü zeigt alle erkannten Energiepläne sowie **Windows Höchstleist
 
 Zusätzlich stehen dort zur Verfügung:
 
+- **Codex-Standby-Sperre aktivieren** (ein-/ausschalten)
+- **Codex-Nachlaufzeit** (5, 10, 15, 30 oder 60 Minuten)
+- **Codex-Status** (läuft / Nachlauf / normaler Standby)
 - Einstellungen
 - aktuelle Programmversion
 - Beenden
@@ -58,6 +62,8 @@ Zusätzlich stehen dort zur Verfügung:
 - **Mit Windows starten**
 - **Energiesparplan beim Windows-Start** – legt einen festen Energieplan fest, der beim Windows-Autostart aktiviert wird
 - **Letzten Energiesparplan verwenden** – lässt den zuletzt aktiven Windows-Energieplan unverändert; die feste Startplan-Auswahl ist dann deaktiviert
+- **Codex-Standby-Sperre aktivieren** – standardmäßig aus
+- **Nachlaufzeit nach Codex-Aufgaben** – standardmäßig 15 Minuten
 
 ![PowerPlanTray Einstellungen](docs/powerplantray-settings-v1.5.0.png)
 
@@ -68,6 +74,22 @@ Der Autostart wird benutzerspezifisch unter folgendem Registry-Pfad verwaltet:
 Die Startplan-Logik wird nur beim Windows-Autostart von PowerPlanTray ausgeführt. Wird PowerPlanTray später manuell gestartet, wird der aktuellen Energieplan dadurch nicht verändert.
 
 PowerPlanTray benötigt dafür keine Änderung an systemweiten Autostart-Einstellungen.
+
+## Codex-Standby-Schutz (im Pull Request, noch nicht veröffentlicht)
+
+Die optionale Funktion liest ausschließlich Ereignistypen und Zeitstempel aus `%USERPROFILE%\.codex\sessions\**\*.jsonl`. Prompt- und Antworttexte werden weder angezeigt noch gespeichert.
+
+- Bei `event_msg / task_started` verhindert Windows den automatischen System-Standby.
+- Bei `event_msg / task_complete` oder `event_msg / turn_aborted` beginnt die gewählte Nachlaufzeit.
+- Eine neue Codex-Aufgabe unterbricht den Nachlauf; parallele Sitzungen werden berücksichtigt.
+- Nach mehr als 90 Minuten ohne Protokollaktivität gilt eine angefangene Aufgabe als verwaist.
+- Die Sperre betrifft nur den System-Standby; der Bildschirm darf sich weiterhin ausschalten.
+- Deaktivierung oder Beenden von PowerPlanTray gibt die Sperre unmittelbar frei.
+- Überprüfung unter Windows: `powercfg /requests`; bei aktivem Schutz sollte unter **SYSTEM** eine Anforderung von PowerPlanTray erscheinen.
+
+Die Funktion kann keine manuell angeordnete Energiesparaktion verhindern; sie verhindert nur den automatischen Leerlauf-Standby. Wenn Codex sein Protokollformat ändert oder Sitzungsdateien nicht lesbar sind, lässt sich ein laufender Task unter Umständen nicht zuverlässig erkennen. Bei Protokollfehlern wird die Sperre vorsichtshalber aufgehoben.
+
+Die Codex-Erweiterung verändert keine Energieplanparameter. Nutzer können sie jederzeit deaktivieren.
 
 ## Tray-Symbole
 
