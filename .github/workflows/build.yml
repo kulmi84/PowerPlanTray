@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -13,10 +15,38 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Publish
-        run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:EnableCompressionInSingleFile=true
-      - name: Upload artifact
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content PowerPlanTray.csproj
+          $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if (-not $version) { throw 'Version missing from project file' }
+          "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Publish Codex edition
+        shell: pwsh
+        run: dotnet publish PowerPlanTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:PublishDir="$env:RUNNER_TEMP/codex/"
+      - name: Checkout standard edition sources
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: standard
+      - name: Publish standard edition
+        shell: pwsh
+        run: dotnet publish standard/PowerPlanTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:Version=${{ steps.version.outputs.value }} -p:AssemblyVersion=${{ steps.version.outputs.value }} -p:FileVersion=${{ steps.version.outputs.value }} -p:PublishDir="$env:RUNNER_TEMP/standard/"
+      - name: Package both editions
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.value }}'
+          Compress-Archive -Path "$env:RUNNER_TEMP/standard/PowerPlanTray.exe" -DestinationPath "PowerPlanTray-v$version.zip"
+          Compress-Archive -Path "$env:RUNNER_TEMP/codex/PowerPlanTray.exe" -DestinationPath "PowerPlanTray-v$version-Codex.zip"
+      - name: Upload standard ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: PowerPlanTray-win-x64
-          path: bin/Release/net8.0-windows/win-x64/publish/PowerPlanTray.exe
+          name: PowerPlanTray-v${{ steps.version.outputs.value }}
+          path: PowerPlanTray-v${{ steps.version.outputs.value }}.zip
+      - name: Upload Codex ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: PowerPlanTray-v${{ steps.version.outputs.value }}-Codex
+          path: PowerPlanTray-v${{ steps.version.outputs.value }}-Codex.zip
