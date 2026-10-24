@@ -13,7 +13,12 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.5.1";
+    private const string AppVersion = "1.6.0-beta.1";
+#if CODEX_EDITION
+    private static readonly bool CodexEdition = true;
+#else
+    private static readonly bool CodexEdition = false;
+#endif
     private const string SettingsDirectoryName = "PowerPlanTray";
     private const string SettingsFileName = "settings.json";
     private const string StartupValueName = "PowerPlanTray";
@@ -35,6 +40,9 @@ internal static class Program
         private readonly ContextMenuStrip _menu;
         private readonly System.Windows.Forms.Timer _timer;
         private readonly CodexStandbyGuard _codexGuard;
+        private readonly EnergyRuleEngine _ruleEngine = new();
+        private readonly EnergyPlanAutomation _automation;
+        private bool _editingRules;
         private readonly Icon _boltIcon;
         private readonly Icon _windowsBoltIcon;
         private readonly Icon _hpIcon;
@@ -46,6 +54,8 @@ internal static class Program
         public TrayApplicationContext(bool startedWithWindows)
         {
             _settings = LoadSettings();
+            _settings.Rules ??= new();
+            _automation = new EnergyPlanAutomation(ActivateRulePlan);
             _codexGuard = new CodexStandbyGuard();
             _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
             _plans = GetPowerPlans();
@@ -89,6 +99,7 @@ internal static class Program
         {
             _timer.Stop();
             _timer.Dispose();
+            _automation.Restore(GetActivePlan());
             _codexGuard.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
@@ -108,6 +119,22 @@ internal static class Program
             EnsureStartupDefaults();
 
             var current = GetActivePlan();
+            if (!_editingRules)
+            {
+                if (!_settings.RulesEnabled)
+                    _automation.Restore(current);
+                else
+                {
+                    var processes = EnergyRuleEngine.ReadProcesses();
+                    if (processes is not null)
+                    {
+                        var available = _plans.Select(p => p.Guid).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        var winner = _ruleEngine.Evaluate(_settings.Rules, processes, available, DateTimeOffset.UtcNow, DateTime.Now);
+                        _automation.Update(winner, current);
+                    }
+                }
+                current = GetActivePlan();
+            }
             var activePlan = _plans.FirstOrDefault(p => string.Equals(p.Guid, current, StringComparison.OrdinalIgnoreCase));
             var nextIcon = GetIconForPlan(activePlan?.Name);
             if (!ReferenceEquals(_notifyIcon.Icon, nextIcon))
@@ -130,6 +157,20 @@ internal static class Program
                 });
             }
             _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(new ToolStripMenuItem("App- und Zeitregeln…", null, (_, _) => ShowRules()));
+            _menu.Items.Add(new ToolStripMenuItem("Automatische Regeln aktivieren", null, (_, _) =>
+            {
+                _settings.RulesEnabled = !_settings.RulesEnabled;
+                _ruleEngine.Reset();
+                SaveSettings(_settings);
+                RefreshState();
+            }) { Checked = _settings.RulesEnabled });
+            _menu.Items.Add(new ToolStripMenuItem($"Regeln: {(_settings.RulesEnabled ? _automation.Status : "Deaktiviert")}") { Enabled = false });
+            if (_automation.Paused)
+                _menu.Items.Add(new ToolStripMenuItem("Regeln jetzt fortsetzen", null, (_, _) => { _automation.Resume(); RefreshState(); }));
+            _menu.Items.Add(new ToolStripSeparator());
+            if (CodexEdition)
+            {
             _menu.Items.Add(new ToolStripMenuItem("Codex-Standby-Sperre aktivieren", null, (_, _) =>
             {
                 _settings.CodexStandbyEnabled = !_settings.CodexStandbyEnabled;
@@ -153,6 +194,7 @@ internal static class Program
             _menu.Items.Add(graceMenu);
             _menu.Items.Add(new ToolStripMenuItem($"Codex: {_codexGuard.Status}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
+            }
             _menu.Items.Add(new ToolStripMenuItem("Einstellungen...", null, (_, _) => ShowSettings()));
             _menu.Items.Add(new ToolStripMenuItem($"PowerPlanTray v{AppVersion}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
@@ -170,8 +212,34 @@ internal static class Program
 
         private void SetPlan(PowerPlan plan)
         {
+            _automation.Pause();
             RunPowerCfg($"/setactive {plan.ActivateTarget}");
             RefreshState();
+        }
+
+        private bool ActivateRulePlan(string guid)
+        {
+            var plan = FindPlanByGuid(guid);
+            if (plan is null) return false;
+            RunPowerCfg($"/setactive {plan.ActivateTarget}");
+            return string.Equals(GetActivePlan(), guid, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void ShowRules()
+        {
+            if (_editingRules) return;
+            _editingRules = true;
+            try
+            {
+                using var form = new RulesForm(_settings.Rules,
+                    _plans.Select(p => new RulePlan(p.Guid, p.Name)).ToList(), _settings.RulesEnabled) { Icon = _boltIcon };
+                if (form.ShowDialog() != DialogResult.OK) return;
+                _settings.Rules = form.Rules;
+                _settings.RulesEnabled = form.AutomationEnabled;
+                _ruleEngine.Reset();
+                SaveSettings(_settings);
+            }
+            finally { _editingRules = false; RefreshState(); }
         }
 
         private void ApplyStartupPlan()
@@ -292,6 +360,11 @@ internal static class Program
                 codexEnabled, graceLabel, graceCombo, codexStatus,
                 version, ok, cancel
             });
+            foreach (var control in new Control[] { codexEnabled, graceLabel, graceCombo, codexStatus })
+                control.Visible = CodexEdition;
+            var rulesButton = new Button { Text = "App- und Zeitregeln…", Location = new Point(18, CodexEdition ? 395 : 245), AutoSize = true };
+            rulesButton.Click += (_, _) => ShowRules();
+            form.Controls.Add(rulesButton);
             form.AcceptButton = ok;
             form.CancelButton = cancel;
 
@@ -392,7 +465,11 @@ internal static class Program
             {
                 var path = GetSettingsPath();
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-                File.WriteAllText(path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
+                var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+                if (File.Exists(path) && File.ReadAllText(path) == json) return;
+                var temporary = path + ".tmp";
+                File.WriteAllText(temporary, json);
+                File.Move(temporary, path, overwrite: true);
             }
             catch { }
         }
@@ -560,6 +637,8 @@ internal static class Program
         public bool UseLastPlan { get; set; } = true;
         public bool CodexStandbyEnabled { get; set; } = false;
         public int CodexGraceMinutes { get; set; } = 15;
+        public bool RulesEnabled { get; set; } = true;
+        public List<EnergyRule> Rules { get; set; } = new();
     }
 
     private sealed record PowerPlan(string Guid, string Name, string ActivateTarget)

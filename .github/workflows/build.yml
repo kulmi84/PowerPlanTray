@@ -23,17 +23,14 @@ jobs:
           $version = $project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
           if (-not $version) { throw 'Version missing from project file' }
           "value=$version" >> $env:GITHUB_OUTPUT
+      - name: Test app and schedule rules
+        run: dotnet run --project tests/Rules.Tests.csproj -c Release
       - name: Publish Codex edition
         shell: pwsh
-        run: dotnet publish PowerPlanTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:PublishDir="$env:RUNNER_TEMP/codex/"
-      - name: Checkout standard edition sources
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: standard
+        run: dotnet publish PowerPlanTray.csproj -c Release -r win-x64 --self-contained true -p:CodexEdition=true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:PublishDir="$env:RUNNER_TEMP/codex/"
       - name: Publish standard edition
         shell: pwsh
-        run: dotnet publish standard/PowerPlanTray.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:Version=${{ steps.version.outputs.value }} -p:AssemblyVersion=${{ steps.version.outputs.value }} -p:FileVersion=${{ steps.version.outputs.value }} -p:PublishDir="$env:RUNNER_TEMP/standard/"
+        run: dotnet publish PowerPlanTray.csproj -c Release -r win-x64 --self-contained true -p:CodexEdition=false -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:PublishDir="$env:RUNNER_TEMP/standard/"
       - name: Package both editions
         shell: pwsh
         run: |

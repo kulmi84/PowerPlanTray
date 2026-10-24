@@ -9,6 +9,7 @@ namespace PowerPlanTray;
 /// while a turn is active or its user-configured grace period has not elapsed.
 /// Never reads or displays prompt or response contents.
 /// </summary>
+#if CODEX_EDITION
 internal sealed class CodexStandbyGuard : IDisposable
 {
     private static readonly TimeSpan StaleTaskTimeout = TimeSpan.FromMinutes(90);
@@ -296,3 +297,12 @@ internal sealed class CodexStandbyGuard : IDisposable
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseHandle(IntPtr handle);
 }
+#else
+// The standard edition contains no session watcher or standby power request.
+internal sealed class CodexStandbyGuard : IDisposable
+{
+    public string Status => "Nicht enthalten";
+    public void Configure(bool enabled, int graceMinutes) { }
+    public void Dispose() { }
+}
+#endif
