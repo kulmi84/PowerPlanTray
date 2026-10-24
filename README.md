@@ -2,7 +2,7 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.6.0-beta.5**. Letzte stabile Version: **1.5.1**.
+Version dieses Pull Requests: **1.6.0-beta.6**. Letzte stabile Version: **1.5.1**.
 
 ## Microsoft Store (Vorbereitung)
 

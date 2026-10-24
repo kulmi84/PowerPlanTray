@@ -11,14 +11,14 @@ Im Microsoft Partner Center einen MSIX-App-Eintrag mit dem Namen PowerPlanTray r
   -IdentityName '<Package/Identity/Name aus Partner Center>' `
   -Publisher '<Package/Identity/Publisher aus Partner Center>' `
   -PublisherDisplayName '<PublisherDisplayName aus Partner Center>' `
-  -PackageVersion '1.6.4.0'
+  -PackageVersion '1.6.5.0'
 ```
 
 Voraussetzungen: Windows, .NET 8 SDK und Windows SDK mit MakeAppx. Alternativ nach Aufnahme dieses Workflows in den Hauptbranch **Build Microsoft Store MSIX** in GitHub Actions mit denselben Identitätswerten starten. Das Paket wird stets mit Codex-Unterstützung gebaut, die zur Laufzeit standardmäßig deaktiviert ist.
 
-Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.4.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
+Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.5.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
 
-Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören nicht in die numerische MSIX-Version. Dieser Stand basiert auf 1.6.0-beta.5; zunächst als privates Paket/Flight testen und vor einer öffentlichen Veröffentlichung einen entsprechend geprüften stabilen Stand verwenden. Versionen bei späteren Uploads passend erhöhen.
+Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören nicht in die numerische MSIX-Version. Dieser Stand basiert auf 1.6.0-beta.6; zunächst als privates Paket/Flight testen und vor einer öffentlichen Veröffentlichung einen entsprechend geprüften stabilen Stand verwenden. Versionen bei späteren Uploads passend erhöhen.
 
 ## Verhalten als Windows-Paket
 

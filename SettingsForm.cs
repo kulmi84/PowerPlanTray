@@ -22,7 +22,7 @@ internal sealed class SettingsForm : Form
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var header = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(24, 20, 24, 8), ColumnCount = 1 };
         AppTheme.AddRow(header, AppTheme.Heading("PowerPlanTray"));
-        AppTheme.AddRow(header, AppTheme.Note($"Energiepläne und Automatik · Version {version}"));
+        AppTheme.AddRow(header, AppTheme.Note("Energiepläne und Automatik"));
         layout.Controls.Add(header, 0, 0);
         var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(24, 6, 24, 0) };
         var content = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
@@ -93,7 +93,15 @@ internal sealed class SettingsForm : Form
             codex.CheckedChanged += (_, _) => UpdateCodex(); UpdateCodex();
             AppTheme.AddRow(codexCard, status); AppTheme.AddRow(content, codexCard);
         }
-        var footer = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(24, 12, 24, 16) };
+        var footer = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(24, 12, 24, 16) };
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        var versionLabel = AppTheme.Note($"Version {version}");
+        versionLabel.Name = "SettingsVersion";
+        versionLabel.Anchor = AnchorStyles.Left;
+        versionLabel.Margin = new Padding(0, 0, 12, 0);
+        footer.Controls.Add(versionLabel, 0, 0);
+        var actions = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty };
         var cancel = new Button { Text = "Abbrechen", AutoSize = true, DialogResult = DialogResult.Cancel };
         var save = new Button { Text = "Speichern", AutoSize = true };
         save.Click += (_, _) =>
@@ -105,7 +113,7 @@ internal sealed class SettingsForm : Form
             if (codexAvailable) { Settings.CodexStandbyEnabled = codex.Checked; Settings.CodexGraceMinutes = (int)grace.SelectedItem!; }
             DialogResult = DialogResult.OK;
         };
-        footer.Controls.Add(cancel); footer.Controls.Add(save); layout.Controls.Add(footer, 0, 2);
+        actions.Controls.Add(cancel); actions.Controls.Add(save); footer.Controls.Add(actions, 1, 0); layout.Controls.Add(footer, 0, 2);
         Controls.Add(layout); AcceptButton = save; CancelButton = cancel;
         AppTheme.Apply(this);
     }
