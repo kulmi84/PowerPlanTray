@@ -8,6 +8,9 @@ void Check(bool condition, string description)
     count++; Console.WriteLine($"PASS {description}");
 }
 var monday = new DateTime(2026, 10, 26, 8, 0, 0);
+Check(!new AppSettings().CodexStandbyEnabled, "Fresh installations default Codex extension to off");
+Check(!JsonSerializer.Deserialize<AppSettings>("{}")!.CodexStandbyEnabled, "Older settings without Codex preference default to off");
+Check(JsonSerializer.Deserialize<AppSettings>("{\"CodexStandbyEnabled\":true}")!.CodexStandbyEnabled, "Explicit Codex opt-in survives restart");
 var utc = new DateTimeOffset(2026, 10, 26, 7, 0, 0, TimeSpan.Zero);
 var schedule = new EnergyRule { Kind = EnergyRuleKind.Schedule, PlanGuid = "time", Days = 2, StartMinute = 480, EndMinute = 1020 };
 Check(!schedule.IsScheduled(monday.AddMinutes(-1)), "Schedule excludes time before start");
@@ -76,4 +79,17 @@ success = true; calls.Clear(); automation.Update(app, null);
 Check(calls.Count == 0, "Unreadable current plan never triggers an untracked switch");
 automation.Update(app, "app"); automation.Update(null, "app");
 Check(calls.Count == 0, "Already selected target needs no restore");
+var vmRule = new EnergyRule { Kind = EnergyRuleKind.HyperV, VmId = "vm-one", VmName = "MK-VM01", PlanGuid = "app", DelaySeconds = 10, GraceSeconds = 20 };
+var vmEngine = new EnergyRuleEngine();
+EnergyRule? VmAt(int seconds, params string[] ids) => vmEngine.Evaluate(new[] { vmRule }, running, available, utc.AddSeconds(seconds), monday, new HashSet<string>(ids, StringComparer.OrdinalIgnoreCase));
+Check(VmAt(0, "vm-two") is null, "Another Hyper-V VM cannot activate selected VM rule");
+Check(VmAt(1, "VM-ONE") is null, "Selected VM begins start delay with case-insensitive ID");
+Check(VmAt(11, "vm-one") == vmRule, "Selected VM activates at delay threshold");
+vmRule.VmName = "Renamed VM";
+Check(VmAt(12, "vm-one", "vm-two") == vmRule, "VM rename and other running VMs preserve ID match");
+Check(VmAt(13, "vm-two") == vmRule, "Stopping selected VM begins grace");
+Check(VmAt(33, "vm-two") is null, "Other running VM cannot extend selected VM grace");
+var savedVm = JsonSerializer.Deserialize<EnergyRule>(JsonSerializer.Serialize(vmRule))!;
+Check(savedVm.Kind == EnergyRuleKind.HyperV && savedVm.VmId == "vm-one" && savedVm.VmName == "Renamed VM", "Hyper-V identity survives settings persistence");
+Check((int)EnergyRuleKind.App == 0 && (int)EnergyRuleKind.Schedule == 1, "Existing rule kind values remain compatible");
 Console.WriteLine($"{count} checks passed.");

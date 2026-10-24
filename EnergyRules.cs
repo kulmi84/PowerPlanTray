@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace PowerPlanTray;
 
-internal enum EnergyRuleKind { App, Schedule }
+internal enum EnergyRuleKind { App, Schedule, HyperV }
 
 internal sealed class EnergyRule
 {
@@ -12,6 +12,8 @@ internal sealed class EnergyRule
     public EnergyRuleKind Kind { get; set; }
     public string PlanGuid { get; set; } = "";
     public string ProcessName { get; set; } = "";
+    public string VmId { get; set; } = "";
+    public string VmName { get; set; } = "";
     public int DelaySeconds { get; set; }
     public int GraceSeconds { get; set; }
     // Bit 0 = Sunday, matching DayOfWeek. Selected days refer to the start day.
@@ -54,7 +56,7 @@ internal sealed class EnergyRuleEngine
     // UTC is used for durations, local wall time for schedules. Process sampling is
     // injected so evaluation can be tested without changing the machine's plan.
     public EnergyRule? Evaluate(IEnumerable<EnergyRule> rules, ISet<string> processes,
-        ISet<string> availablePlans, DateTimeOffset utcNow, DateTime localNow)
+        ISet<string> availablePlans, DateTimeOffset utcNow, DateTime localNow, ISet<string>? runningVms = null)
     {
         EnergyRule? winner = null;
         var liveIds = new HashSet<string>();
@@ -70,7 +72,10 @@ internal sealed class EnergyRuleEngine
                 if (!_apps.TryGetValue(rule.Id, out var state))
                     _apps[rule.Id] = state = new AppState();
                 var processName = EnergyRule.NormalizeProcess(rule.ProcessName);
-                if (processName.Length > 0 && processes.Contains(processName))
+                bool present = rule.Kind == EnergyRuleKind.HyperV
+                    ? rule.VmId.Length > 0 && runningVms is not null && runningVms.Contains(rule.VmId)
+                    : processName.Length > 0 && processes.Contains(processName);
+                if (present)
                 {
                     state.MissingSince = null;
                     state.SeenSince ??= utcNow;
@@ -132,6 +137,7 @@ internal sealed class EnergyPlanAutomation
     }
 
     public void Resume() => Paused = false;
+    public void ReportUnavailable(string message) => Status = message;
 
     public void Update(EnergyRule? rule, string? current)
     {

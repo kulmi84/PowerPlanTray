@@ -2,7 +2,61 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.6.0-beta.1**. Letzte stabile Version: **1.5.1**.
+Aktuelle Version: **1.6.0**.
+
+## Einstellungen und Über-Dialog · Beta 9
+
+Ist die Codex-Erweiterung in den Einstellungen ausgeschaltet, erscheinen keine Codex-Einträge im Rechtsklick-Menü. Zum Einschalten die Einstellungen öffnen.
+
+Die Fußzeile enthält die Version und **Über…**. Der Entwicklerhinweis **Entwickelt von Marcin Kulmaczewski** steht ausschließlich im Über-Dialog. Der Über-Dialog ist auch im Tray-Menü erreichbar und verlinkt Projekt, Fehlermeldung, Anleitung und Komponentenhinweise auf GitHub.
+
+![Aktuelle Einstellungen mit Version und Über-Schaltfläche](docs/screenshots/settings-beta9.png)
+
+![Über PowerPlanTray mit GitHub-Verweisen](docs/screenshots/about-beta9.png)
+
+## Tray-Menü · Beta 7
+
+Markierte Menüeinträge verwenden einen dunklen Hintergrund mit heller Schrift für guten Kontrast.
+
+![Tray-Menü mit gut lesbarer Markierung](docs/screenshots/menu-beta7.png)
+
+## Weitere Ansichten · Beta 6
+
+Aus der aktuellen Oberfläche erzeugte Ansichten mit Beispieldaten. Energiepläne, Apps und VMs sind frei wählbar; die gezeigten Regeln sind keine Voreinstellungen.
+
+### Einstellungen
+
+Dunkle Oberfläche, frei wählbare Energiepläne, Autostart und optionaler Codex-Schutz. Die Versionsnummer bleibt unten links sichtbar.
+
+![PowerPlanTray Beta 6: Einstellungen mit Versionsnummer unten links](docs/screenshots/settings-beta6.png)
+
+### Regeln und Priorität
+
+App-, Zeit- und Hyper-V-Regeln in einer gemeinsamen Liste. Die oberste passende Regel gewinnt.
+
+![Regelübersicht mit App-, Zeit- und Hyper-V-Beispiel](docs/screenshots/rules-beta6.png)
+
+### App-Regel
+
+Eine EXE auswählen und den gewünschten Energieplan zuordnen. Startverzögerung und Nachlaufzeit lassen sich getrennt einstellen.
+
+![App-Regel mit Startverzögerung und Nachlaufzeit](docs/screenshots/app-rule-beta6.png)
+
+### Zeitregel
+
+Energieplan für ausgewählte Wochentage und ein frei wählbares Zeitfenster festlegen.
+
+![Zeitregel für Montag bis Freitag von 08 bis 17 Uhr](docs/screenshots/schedule-rule-beta6.png)
+
+### Einzelne Microsoft-Hyper-V-VM
+
+Über **VMs laden** eine lokale VM auswählen. Die Regel ist über deren eindeutige ID zugeordnet. Der dargestellte VM-Eintrag ist ein Beispiel; sein Betriebszustand wurde in dieser Ansicht nicht abgefragt.
+
+![Hyper-V-Regel für die Beispiel-VM MK-VM01](docs/screenshots/hyperv-rule-beta6.png)
+
+## Microsoft Store (Vorbereitung)
+
+Für den Microsoft Store wird eine gemeinsame MSIX-Ausgabe vorbereitet. Die **Codex-Erweiterung ist standardmäßig aus** und kann unter **Einstellungen** ein- oder ausgeschaltet werden. Store-Einstellungen werden getrennt von der portablen Version gespeichert; der Windows-Autostart verwendet die StartupTask-API. Build, Identitätsangaben und Prüfschritte stehen in [packaging/STORE-SUBMISSION.md](packaging/STORE-SUBMISSION.md), die Datenschutzhinweise in [docs/PRIVACY.md](docs/PRIVACY.md). Ein Store-Eintrag ist mit dieser Vorbereitung noch nicht veröffentlicht.
 
 ## Neu in 1.6.0-beta.1: App- und Zeitregeln
 
@@ -14,7 +68,20 @@ Version dieses Pull Requests: **1.6.0-beta.1**. Letzte stabile Version: **1.5.1*
 - Die Regel gilt für alle laufenden Prozesse mit diesem Dateinamen, unabhängig vom Installationsordner. Groß-/Kleinschreibung und die Endung `.exe` spielen keine Rolle.
 - **Startverzögerung**: Die App muss für die eingestellte Dauer durchgehend erkannt werden (0 = sofort).
 - **Nachlaufzeit**: Nach Ende der App bleibt die Regel noch für die gewählte Dauer aktiv (0 = kein Nachlauf).
-- Für eine VM den Prozess der laufenden virtuellen Maschine wählen, nicht nur das Verwaltungsfenster. Die Erkennung erfolgt über den frei gewählten Prozessnamen; ein VM-spezifischer Betriebszustand wird nicht abgefragt.
+- App-Regeln erkennen alle gleichnamigen Prozesse. Für einzelne Microsoft-Hyper-V-VMs den zusätzlichen Hyper-V-Auslöser verwenden.
+
+### Microsoft Hyper-V: VM läuft
+
+- Als Auslöser **Microsoft Hyper-V: VM läuft** auswählen, **VMs laden** anklicken und die gewünschte lokale VM wählen.
+- Die Zuordnung erfolgt anhand der eindeutigen VM-ID und bleibt bei einer Umbenennung erhalten.
+- Nur der Zustand **Läuft** aktiviert die Regel. Ausgeschaltete, gespeicherte und pausierte VMs aktivieren sie nicht.
+- Startverzögerung und Nachlauf gelten auch hier. Bei mehreren passenden VM-Regeln gewinnt die oberste Regel.
+- Hyper-V muss installiert und das Windows-Konto zur Verwaltung berechtigt sein, beispielsweise über die Gruppe **Hyper-V-Administratoren**.
+- Bei nicht erreichbarem Hyper-V wird die Automatik ausgesetzt und der Energieplan bleibt erhalten; ein Hinweis erscheint im Tray-Status.
+
+### Oberfläche in Beta 5
+
+Dunkle Einstellungen mit Windows-Checkboxen, korrigierten Hintergründen und überlagerungsfreiem Text. Der Wechsel zwischen App-, Zeit- und VM-Regeln erfolgt gemeinsam mit gepufferter Darstellung, um Flackern durch Zwischenzustände zu vermeiden. Die Codex-Erweiterung bleibt bei frischen Einstellungen standardmäßig aus.
 
 ### Zeitfenster
 
@@ -33,10 +100,10 @@ Version dieses Pull Requests: **1.6.0-beta.1**. Letzte stabile Version: **1.5.1*
 - Prüfung alle fünf Sekunden. Verzögerung und Nachlauf beginnen beim ersten beobachteten Start bzw. Ende. Während der Regeldialog geöffnet ist, werden Planwechsel ausgesetzt.
 - Regeln werden zusammen mit den bestehenden Einstellungen in `%APPDATA%\PowerPlanTray\settings.json` gespeichert. Der vorherige Plan wird für die laufende Programmsitzung gehalten; nach einem Absturz oder erzwungenen Beenden erfolgt keine nachträgliche Wiederherstellung.
 
-### Beta-Downloads
+### Downloads
 
-- `PowerPlanTray-v1.6.0-beta.1.zip`: Standard, ohne Codex-Sitzungsüberwachung oder Standby-Sperre.
-- `PowerPlanTray-v1.6.0-beta.1-Codex.zip`: mit optionalem Codex-Standby-Schutz wie in 1.5.1.
+- `PowerPlanTray-v1.6.0.zip`: Standard, ohne Codex-Sitzungsüberwachung oder Standby-Sperre.
+- `PowerPlanTray-v1.6.0-Codex.zip`: mit optionalem Codex-Standby-Schutz wie in 1.5.1.
 
 Beide Varianten sind portable, selbstständige Windows-x64-Anwendungen und werden aus demselben Commit gebaut. Vor einem Test die bisherige PowerPlanTray-Instanz beenden.
 

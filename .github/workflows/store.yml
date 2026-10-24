@@ -1,0 +1,45 @@
+name: Build Microsoft Store MSIX
+on:
+  workflow_dispatch:
+    inputs:
+      identity_name:
+        description: Exact Package Identity Name from Partner Center
+        required: true
+        type: string
+      publisher:
+        description: Exact Publisher CN from Partner Center
+        required: true
+        type: string
+      publisher_display_name:
+        description: Registered publisher display name
+        required: true
+        type: string
+      package_version:
+        description: Numeric Store version (fourth component must be 0)
+        required: true
+        default: '1.6.9.0'
+        type: string
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Test rules and Codex opt-in defaults
+        run: dotnet run --project tests/Rules.Tests.csproj -c Release
+      - name: Build Store package
+        shell: pwsh
+        env:
+          STORE_IDENTITY: ${{ inputs.identity_name }}
+          STORE_PUBLISHER: ${{ inputs.publisher }}
+          STORE_PUBLISHER_DISPLAY: ${{ inputs.publisher_display_name }}
+          STORE_VERSION: ${{ inputs.package_version }}
+        run: ./packaging/Build-StorePackage.ps1 -IdentityName $env:STORE_IDENTITY -Publisher $env:STORE_PUBLISHER -PublisherDisplayName $env:STORE_PUBLISHER_DISPLAY -PackageVersion $env:STORE_VERSION
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PowerPlanTray-Microsoft-Store
+          path: artifacts/store/*.msix

@@ -13,7 +13,12 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.6.0-beta.1";
+    private const string AppVersion = "1.6.0";
+#if LOCAL_TEST
+    private static readonly bool LocalTest = true;
+#else
+    private static readonly bool LocalTest = false;
+#endif
 #if CODEX_EDITION
     private static readonly bool CodexEdition = true;
 #else
@@ -29,6 +34,8 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        using var instance = new Mutex(true, @"Local\PowerPlanTray", out var firstInstance);
+        if (!firstInstance) return;
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         ApplicationConfiguration.Initialize();
         Application.Run(new TrayApplicationContext(args.Any(a => a.Equals(StartupArgument, StringComparison.OrdinalIgnoreCase))));
@@ -43,6 +50,7 @@ internal static class Program
         private readonly EnergyRuleEngine _ruleEngine = new();
         private readonly EnergyPlanAutomation _automation;
         private bool _editingRules;
+        private bool _showingSettings;
         private readonly Icon _boltIcon;
         private readonly Icon _windowsBoltIcon;
         private readonly Icon _hpIcon;
@@ -72,6 +80,7 @@ internal static class Program
             _genericIcon = CreateGenericIcon();
 
             _menu = new ContextMenuStrip();
+            AppTheme.ApplyMenu(_menu);
             // Refresh the contents on demand. Rebuilding a visible menu on every timer
             // tick makes its open submenus flicker and sometimes collapse.
             _menu.Opening += (_, _) => RebuildMenu();
@@ -126,10 +135,13 @@ internal static class Program
                 else
                 {
                     var processes = EnergyRuleEngine.ReadProcesses();
-                    if (processes is not null)
+                    var needsHyperV = _settings.Rules.Any(r => r.Enabled && r.Kind == EnergyRuleKind.HyperV);
+                    var hyperV = needsHyperV ? HyperVReader.Poll() : null;
+                    if (needsHyperV && hyperV?.Error is not null) _automation.ReportUnavailable("Hyper-V nicht erreichbar (Berechtigung prüfen)");
+                    if (processes is not null && (!needsHyperV || hyperV?.Machines is not null))
                     {
                         var available = _plans.Select(p => p.Guid).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                        var winner = _ruleEngine.Evaluate(_settings.Rules, processes, available, DateTimeOffset.UtcNow, DateTime.Now);
+                        var winner = _ruleEngine.Evaluate(_settings.Rules, processes, available, DateTimeOffset.UtcNow, DateTime.Now, hyperV?.Machines?.Where(v => v.Running == true).Select(v => v.Id).ToHashSet(StringComparer.OrdinalIgnoreCase));
                         _automation.Update(winner, current);
                     }
                 }
@@ -169,7 +181,7 @@ internal static class Program
             if (_automation.Paused)
                 _menu.Items.Add(new ToolStripMenuItem("Regeln jetzt fortsetzen", null, (_, _) => { _automation.Resume(); RefreshState(); }));
             _menu.Items.Add(new ToolStripSeparator());
-            if (CodexEdition)
+            if (CodexEdition && _settings.CodexStandbyEnabled)
             {
             _menu.Items.Add(new ToolStripMenuItem("Codex-Standby-Sperre aktivieren", null, (_, _) =>
             {
@@ -196,6 +208,11 @@ internal static class Program
             _menu.Items.Add(new ToolStripSeparator());
             }
             _menu.Items.Add(new ToolStripMenuItem("Einstellungen...", null, (_, _) => ShowSettings()));
+            _menu.Items.Add(new ToolStripMenuItem("Über PowerPlanTray…", null, (_, _) =>
+            {
+                using var about = new AboutForm(AppVersion) { Icon = _notifyIcon.Icon };
+                about.ShowDialog();
+            }));
             _menu.Items.Add(new ToolStripMenuItem($"PowerPlanTray v{AppVersion}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()));
@@ -252,147 +269,43 @@ internal static class Program
                 RunPowerCfg($"/setactive {startupPlan.ActivateTarget}");
         }
 
-        private void ShowSettings()
+        private async void ShowSettings()
         {
-            _plans = GetPowerPlans();
-            EnsureToggleDefaults();
-            EnsureStartupDefaults();
-
-            using var form = new Form
+            if (_showingSettings) return;
+            _showingSettings = true;
+            try
             {
-                Text = $"PowerPlanTray v{AppVersion} - Einstellungen",
-                Icon = _boltIcon,
-                ShowIcon = true,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                StartPosition = FormStartPosition.CenterScreen,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                ShowInTaskbar = false,
-                ClientSize = new Size(500, 445)
-            };
-
-            var labelA = new Label { Text = "Linksklick Plan A:", AutoSize = true, Location = new Point(18, 22) };
-            var comboA = CreatePlanComboBox(new Point(195, 18), 285);
-            var labelB = new Label { Text = "Linksklick Plan B:", AutoSize = true, Location = new Point(18, 62) };
-            var comboB = CreatePlanComboBox(new Point(195, 58), 285);
-
-            var startup = new CheckBox
-            {
-                Text = "Mit Windows starten",
-                AutoSize = true,
-                Location = new Point(18, 108),
-                Checked = IsStartupEnabled()
-            };
-
-            var startupPlanLabel = new Label
-            {
-                Text = "Energiesparplan beim Windows-Start:",
-                AutoSize = true,
-                Location = new Point(18, 153)
-            };
-            var startupPlanCombo = CreatePlanComboBox(new Point(245, 149), 235);
-            startupPlanCombo.SelectedItem = FindPlanByGuid(_settings.StartupPlan);
-
-            var useLastPlan = new CheckBox
-            {
-                Text = "Letzten Energiesparplan verwenden",
-                AutoSize = true,
-                Location = new Point(18, 195),
-                Checked = _settings.UseLastPlan
-            };
-
-            void UpdateStartupControls()
-            {
-                startupPlanCombo.Enabled = !useLastPlan.Checked;
-                startupPlanLabel.Enabled = !useLastPlan.Checked;
+                _plans = GetPowerPlans();
+                EnsureToggleDefaults();
+                EnsureStartupDefaults();
+                bool startupEnabled;
+                try { startupEnabled = StoreIntegration.IsPackaged ? await StoreIntegration.IsStartupEnabledAsync() : IsStartupEnabled(); }
+                catch { startupEnabled = false; }
+                using var form = new SettingsForm(_settings,
+                    _plans.Select(p => new RulePlan(p.Guid, p.Name)).ToList(), AppVersion, startupEnabled,
+                    !LocalTest || StoreIntegration.IsPackaged, CodexEdition, _codexGuard.Status) { Icon = _boltIcon };
+                form.RuleEditorOpenChanged += open => _editingRules = open;
+                if (form.ShowDialog() != DialogResult.OK) return;
+                _settings = form.Settings;
+                if (form.RulesEdited) _ruleEngine.Reset();
+                SaveSettings(_settings);
+                _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
+                if (StoreIntegration.IsPackaged && form.StartupEnabled != startupEnabled)
+                {
+                    try
+                    {
+                        if (await StoreIntegration.SetStartupEnabledAsync(form.StartupEnabled) is { } message)
+                            MessageBox.Show(message, "PowerPlanTray – Autostart", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch
+                    {
+                        MessageBox.Show("Die Windows-Autostart-Einstellung konnte nicht geändert werden.", "PowerPlanTray – Autostart");
+                    }
+                }
+                else if (!StoreIntegration.IsPackaged && !LocalTest) SetStartupEnabled(form.StartupEnabled);
+                RefreshState();
             }
-            useLastPlan.CheckedChanged += (_, _) => UpdateStartupControls();
-            UpdateStartupControls();
-
-            var codexEnabled = new CheckBox
-            {
-                Text = "Codex-Standby-Sperre aktivieren",
-                AutoSize = true,
-                Location = new Point(18, 244),
-                Checked = _settings.CodexStandbyEnabled
-            };
-            var graceLabel = new Label
-            {
-                Text = "Nachlaufzeit nach Codex-Aufgaben:",
-                AutoSize = true,
-                Location = new Point(18, 285)
-            };
-            var graceCombo = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = new Point(245, 280),
-                Size = new Size(235, 28)
-            };
-            foreach (var minutes in new[] { 5, 10, 15, 30, 60 })
-                graceCombo.Items.Add(minutes);
-            graceCombo.SelectedItem = graceCombo.Items.Contains(_settings.CodexGraceMinutes)
-                ? _settings.CodexGraceMinutes : 15;
-            graceCombo.Enabled = codexEnabled.Checked;
-            graceLabel.Enabled = codexEnabled.Checked;
-            codexEnabled.CheckedChanged += (_, _) =>
-            {
-                graceCombo.Enabled = codexEnabled.Checked;
-                graceLabel.Enabled = codexEnabled.Checked;
-            };
-
-            var codexStatus = new Label
-            {
-                Text = $"Codex: {_codexGuard.Status}",
-                AutoSize = true,
-                Location = new Point(18, 325)
-            };
-            var version = new Label { Text = $"Version {AppVersion}", AutoSize = true, Location = new Point(18, 362) };
-            var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(322, 399), Size = new Size(75, 28) };
-            var cancel = new Button { Text = "Abbrechen", DialogResult = DialogResult.Cancel, Location = new Point(405, 399), Size = new Size(75, 28) };
-
-            comboA.SelectedItem = FindPlanByGuid(_settings.TogglePlanA);
-            comboB.SelectedItem = FindPlanByGuid(_settings.TogglePlanB);
-
-            form.Controls.AddRange(new Control[]
-            {
-                labelA, comboA, labelB, comboB, startup,
-                startupPlanLabel, startupPlanCombo, useLastPlan,
-                codexEnabled, graceLabel, graceCombo, codexStatus,
-                version, ok, cancel
-            });
-            foreach (var control in new Control[] { codexEnabled, graceLabel, graceCombo, codexStatus })
-                control.Visible = CodexEdition;
-            var rulesButton = new Button { Text = "App- und Zeitregeln…", Location = new Point(18, CodexEdition ? 395 : 245), AutoSize = true };
-            rulesButton.Click += (_, _) => ShowRules();
-            form.Controls.Add(rulesButton);
-            form.AcceptButton = ok;
-            form.CancelButton = cancel;
-
-            if (form.ShowDialog() != DialogResult.OK) return;
-
-            if (comboA.SelectedItem is PowerPlan selectedA) _settings.TogglePlanA = selectedA.Guid;
-            if (comboB.SelectedItem is PowerPlan selectedB) _settings.TogglePlanB = selectedB.Guid;
-            if (startupPlanCombo.SelectedItem is PowerPlan selectedStartup) _settings.StartupPlan = selectedStartup.Guid;
-            _settings.UseLastPlan = useLastPlan.Checked;
-            _settings.CodexStandbyEnabled = codexEnabled.Checked;
-            _settings.CodexGraceMinutes = graceCombo.SelectedItem is int selectedMinutes ? selectedMinutes : 15;
-
-            SaveSettings(_settings);
-            _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
-            SetStartupEnabled(startup.Checked);
-            RefreshState();
-        }
-
-        private ComboBox CreatePlanComboBox(Point location, int width = 255)
-        {
-            var combo = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Location = location,
-                Size = new Size(width, 28)
-            };
-            foreach (var plan in _plans) combo.Items.Add(plan);
-            return combo;
+            finally { _showingSettings = false; }
         }
 
         private void EnsureToggleDefaults()
@@ -474,8 +387,10 @@ internal static class Program
             catch { }
         }
 
-        private static string GetSettingsPath() =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsDirectoryName, SettingsFileName);
+        private static string GetSettingsPath() => StoreIntegration.IsPackaged
+            ? Path.Combine(StoreIntegration.SettingsDirectory, SettingsFileName)
+            : LocalTest ? Path.Combine(AppContext.BaseDirectory, "Test-Einstellungen", SettingsFileName)
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsDirectoryName, SettingsFileName);
 
         private static bool IsStartupEnabled()
         {
@@ -627,18 +542,6 @@ internal static class Program
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
-    }
-
-    private sealed class AppSettings
-    {
-        public string? TogglePlanA { get; set; }
-        public string? TogglePlanB { get; set; }
-        public string? StartupPlan { get; set; }
-        public bool UseLastPlan { get; set; } = true;
-        public bool CodexStandbyEnabled { get; set; } = false;
-        public int CodexGraceMinutes { get; set; } = 15;
-        public bool RulesEnabled { get; set; } = true;
-        public List<EnergyRule> Rules { get; set; } = new();
     }
 
     private sealed record PowerPlan(string Guid, string Name, string ActivateTarget)
