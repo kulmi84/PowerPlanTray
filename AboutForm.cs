@@ -33,8 +33,8 @@ internal sealed class AboutForm : BufferedForm
         const string project = "https://github.com/kulmi84/PowerPlanTray";
         Link("Projekt auf GitHub", project, 3);
         Link("Fehler melden / Verbesserung vorschlagen", project + "/issues/new", 4);
-        Link("Anleitung öffnen", project + "/blob/feat/microsoft-store-msix/README.md", 5);
-        Link("Komponentenhinweise", project + "/blob/feat/microsoft-store-msix/docs/COMPONENTS.md", 6);
+        Link("Anleitung öffnen", project + "/blob/main/README.md", 5);
+        Link("Komponentenhinweise", project + "/blob/main/docs/COMPONENTS.md", 6);
         var close = new Button { Text = "Schließen", AutoSize = true, DialogResult = DialogResult.OK, Anchor = AnchorStyles.Right | AnchorStyles.Bottom };
         layout.Controls.Add(close, 0, 7);
         Controls.Add(layout);

@@ -2,7 +2,7 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.6.0-beta.9**. Letzte stabile Version: **1.5.1**.
+Aktuelle Version: **1.6.0**.
 
 ## Einstellungen und Über-Dialog · Beta 9
 
@@ -100,10 +100,10 @@ Dunkle Einstellungen mit Windows-Checkboxen, korrigierten Hintergründen und üb
 - Prüfung alle fünf Sekunden. Verzögerung und Nachlauf beginnen beim ersten beobachteten Start bzw. Ende. Während der Regeldialog geöffnet ist, werden Planwechsel ausgesetzt.
 - Regeln werden zusammen mit den bestehenden Einstellungen in `%APPDATA%\PowerPlanTray\settings.json` gespeichert. Der vorherige Plan wird für die laufende Programmsitzung gehalten; nach einem Absturz oder erzwungenen Beenden erfolgt keine nachträgliche Wiederherstellung.
 
-### Beta-Downloads
+### Downloads
 
-- `PowerPlanTray-v1.6.0-beta.1.zip`: Standard, ohne Codex-Sitzungsüberwachung oder Standby-Sperre.
-- `PowerPlanTray-v1.6.0-beta.1-Codex.zip`: mit optionalem Codex-Standby-Schutz wie in 1.5.1.
+- `PowerPlanTray-v1.6.0.zip`: Standard, ohne Codex-Sitzungsüberwachung oder Standby-Sperre.
+- `PowerPlanTray-v1.6.0-Codex.zip`: mit optionalem Codex-Standby-Schutz wie in 1.5.1.
 
 Beide Varianten sind portable, selbstständige Windows-x64-Anwendungen und werden aus demselben Commit gebaut. Vor einem Test die bisherige PowerPlanTray-Instanz beenden.
 
