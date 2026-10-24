@@ -13,7 +13,7 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.6.0-beta.6";
+    private const string AppVersion = "1.6.0-beta.7";
 #if LOCAL_TEST
     private static readonly bool LocalTest = true;
 #else

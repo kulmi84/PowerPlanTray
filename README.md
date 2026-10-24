@@ -2,9 +2,15 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.6.0-beta.6**. Letzte stabile Version: **1.5.1**.
+Version dieses Pull Requests: **1.6.0-beta.7**. Letzte stabile Version: **1.5.1**.
 
-## Aktuelle Ansichten · Beta 6
+## Tray-Menü · Beta 7
+
+Markierte Menüeinträge verwenden einen dunklen Hintergrund mit heller Schrift für guten Kontrast.
+
+![Tray-Menü mit gut lesbarer Markierung](docs/screenshots/menu-beta7.png)
+
+## Weitere Ansichten · Beta 6
 
 Aus der aktuellen Oberfläche erzeugte Ansichten mit Beispieldaten. Energiepläne, Apps und VMs sind frei wählbar; die gezeigten Regeln sind keine Voreinstellungen.
 

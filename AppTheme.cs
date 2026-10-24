@@ -25,6 +25,18 @@ internal static class AppTheme
     private sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
     {
         public DarkMenuRenderer() : base(new DarkMenuColors()) { }
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+        {
+            var bounds = new Rectangle(Point.Empty, e.Item.Size);
+            bool highlighted = e.Item.Enabled && (e.Item.Selected || e.Item.Pressed);
+            using var fill = new SolidBrush(highlighted ? Field : Background);
+            e.Graphics.FillRectangle(fill, bounds);
+            if (highlighted)
+            {
+                using var border = new Pen(Border);
+                e.Graphics.DrawRectangle(border, 0, 0, Math.Max(0, bounds.Width - 1), Math.Max(0, bounds.Height - 1));
+            }
+        }
         protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
         { e.TextColor = e.Item.Enabled ? Text : Muted; base.OnRenderItemText(e); }
         protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e)
@@ -40,6 +52,7 @@ internal static class AppTheme
     }
     private sealed class DarkMenuColors : ProfessionalColorTable
     {
+        public DarkMenuColors() => UseSystemColors = false;
         public override Color ToolStripDropDownBackground => Background;
         public override Color ImageMarginGradientBegin => Background;
         public override Color ImageMarginGradientMiddle => Background;
