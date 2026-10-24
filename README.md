@@ -2,7 +2,53 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.5.1 (Testversion)**. Letzte veröffentlichte Version: **1.5.0**.
+Version dieses Pull Requests: **1.6.0-beta.1**. Letzte stabile Version: **1.5.1**.
+
+## Neu in 1.6.0-beta.1: App- und Zeitregeln
+
+Über **App- und Zeitregeln…** im Tray oder in den Einstellungen lassen sich beliebige Programme und Zeitfenster einem Energieplan zuordnen. Beide Editionen enthalten diese Automatik. Es sind zunächst keine Regeln angelegt; ohne eigene Regeln ändert sich das bisherige Verhalten nicht.
+
+### App läuft
+
+- Beliebigen EXE-Dateinamen eingeben oder eine EXE über den Dateidialog auswählen.
+- Die Regel gilt für alle laufenden Prozesse mit diesem Dateinamen, unabhängig vom Installationsordner. Groß-/Kleinschreibung und die Endung `.exe` spielen keine Rolle.
+- **Startverzögerung**: Die App muss für die eingestellte Dauer durchgehend erkannt werden (0 = sofort).
+- **Nachlaufzeit**: Nach Ende der App bleibt die Regel noch für die gewählte Dauer aktiv (0 = kein Nachlauf).
+- Für eine VM den Prozess der laufenden virtuellen Maschine wählen, nicht nur das Verwaltungsfenster. Die Erkennung erfolgt über den frei gewählten Prozessnamen; ein VM-spezifischer Betriebszustand wird nicht abgefragt.
+
+### Zeitfenster
+
+- Wochentage, Startzeit und Endzeit frei wählen; es gilt die lokale Windows-Uhrzeit.
+- Start inklusive, Ende exklusive. Start und Ende müssen unterschiedlich sein.
+- Zeitfenster über Mitternacht gehören zum Starttag: Montag 22:00–06:00 endet am Dienstag um 06:00.
+- Für einen ganzen Tag zwei aufeinanderfolgende Zeitfenster verwenden. Die Anwendung muss laufen; sie weckt den PC nicht auf.
+
+### Priorität und manuelle Auswahl
+
+- App- und Zeitregeln stehen in einer gemeinsamen Liste. Die **oberste passende, aktivierte Regel** gewinnt. **Nach oben / Nach unten** ändern die Priorität.
+- Nicht mehr vorhandene Zielpläne werden übersprungen. Fehlgeschlagene Wechsel werden im Tray-Status gemeldet und beim nächsten Durchlauf erneut versucht.
+- Sind keine Regeln mehr aktiv, wird der Energieplan vor Beginn der Automatik wiederhergestellt. Das gilt auch beim normalen Beenden.
+- Manuelle Planwahl im Tray oder ein erkannter externer Planwechsel pausiert die Automatik. Fortsetzung über **Regeln jetzt fortsetzen** oder automatisch, sobald keine Regel mehr passt. Der manuell gewählte Plan wird dabei nicht zurückgesetzt.
+- Globale Aktivierung und einzelne Regeln können ein-/ausgeschaltet werden. Änderungen im Regeldialog gelten erst nach **Speichern**.
+- Prüfung alle fünf Sekunden. Verzögerung und Nachlauf beginnen beim ersten beobachteten Start bzw. Ende. Während der Regeldialog geöffnet ist, werden Planwechsel ausgesetzt.
+- Regeln werden zusammen mit den bestehenden Einstellungen in `%APPDATA%\PowerPlanTray\settings.json` gespeichert. Der vorherige Plan wird für die laufende Programmsitzung gehalten; nach einem Absturz oder erzwungenen Beenden erfolgt keine nachträgliche Wiederherstellung.
+
+### Beta-Downloads
+
+- `PowerPlanTray-v1.6.0-beta.1.zip`: Standard, ohne Codex-Sitzungsüberwachung oder Standby-Sperre.
+- `PowerPlanTray-v1.6.0-beta.1-Codex.zip`: mit optionalem Codex-Standby-Schutz wie in 1.5.1.
+
+Beide Varianten sind portable, selbstständige Windows-x64-Anwendungen und werden aus demselben Commit gebaut. Vor einem Test die bisherige PowerPlanTray-Instanz beenden.
+
+### Tests und Builds
+
+```powershell
+dotnet run --project tests/Rules.Tests.csproj -c Release
+dotnet build PowerPlanTray.csproj -c Release -p:CodexEdition=false
+dotnet build PowerPlanTray.csproj -c Release -p:CodexEdition=true
+```
+
+Die Regeltests prüfen unter anderem Zeitgrenzen, Mitternacht, Wochentage, Prioritäten, Startverzögerung, Nachlauf, manuelle Auswahl, Wiederherstellung und fehlgeschlagene Planwechsel ohne echte Systemänderungen.
 
 ## Funktionen
 
@@ -75,7 +121,7 @@ Die Startplan-Logik wird nur beim Windows-Autostart von PowerPlanTray ausgeführ
 
 PowerPlanTray benötigt dafür keine Änderung an systemweiten Autostart-Einstellungen.
 
-## Codex-Standby-Schutz (im Pull Request, noch nicht veröffentlicht)
+## Codex-Standby-Schutz (nur Codex-Edition)
 
 Die optionale Funktion liest ausschließlich Ereignistypen und Zeitstempel aus `%USERPROFILE%\.codex\sessions\**\*.jsonl`. Prompt- und Antworttexte werden weder angezeigt noch gespeichert.
 
@@ -131,9 +177,9 @@ Die EXE liegt anschließend unter:
 
 ## GitHub Actions
 
-Bei Änderungen auf dem Hauptbranch erstellt GitHub Actions automatisch eine portable Windows-x64-Version. Nach erfolgreichem Lauf steht sie im jeweiligen Workflow unter **Artifacts** als `PowerPlanTray-win-x64` bereit.
+Bei Änderungen auf dem Hauptbranch und in Pull Requests führt GitHub Actions die Regeltests aus und erstellt beide portablen Windows-x64-Editionen. Die versionierten ZIP-Dateien stehen anschließend unter **Artifacts** bereit. Die Standard-Edition wird mit `-p:CodexEdition=false`, die Codex-Edition mit `-p:CodexEdition=true` gebaut.
 
-## Änderungen in 1.5.1 (Pull Request, Testversion)
+## Änderungen in 1.5.1
 
 - Codex-Standby-Schutz während laufender Aufgaben mit konfigurierbarer Nachlaufzeit (Standard 15 Minuten)
 - Option direkt im Tray-Menü und im Einstellungsfenster
