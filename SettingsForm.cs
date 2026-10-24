@@ -16,13 +16,13 @@ internal sealed class SettingsForm : Form
         bool startupEditable, bool codexAvailable, string codexStatus)
     {
         Settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
-        Text = "PowerPlanTray – Einstellungen"; StartPosition = FormStartPosition.CenterScreen;
+        Text = L.T("PowerPlanTray – Einstellungen"); StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(760, 560); ClientSize = new Size(860, 740);
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var header = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(24, 20, 24, 8), ColumnCount = 1 };
         AppTheme.AddRow(header, AppTheme.Heading("PowerPlanTray"));
-        AppTheme.AddRow(header, AppTheme.Note("Energiepläne und Automatik"));
+        AppTheme.AddRow(header, AppTheme.Note(L.T("Energiepläne und Automatik")));
         layout.Controls.Add(header, 0, 0);
         var scroll = new Panel { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(24, 6, 24, 0) };
         var content = new TableLayoutPanel { Dock = DockStyle.Top, AutoSize = true, ColumnCount = 1 };
@@ -35,31 +35,31 @@ internal sealed class SettingsForm : Form
             box.SelectedItem = plans.FirstOrDefault(p => p.Guid.Equals(guid, StringComparison.OrdinalIgnoreCase));
             return box;
         }
-        var toggleCard = AppTheme.Card("Energiepläne wechseln");
-        AppTheme.AddRow(toggleCard, AppTheme.Note("Ein Linksklick auf das Tray-Symbol wechselt zwischen diesen beiden Plänen."));
+        var toggleCard = AppTheme.Card(L.T("Energiepläne wechseln"));
+        AppTheme.AddRow(toggleCard, AppTheme.Note(L.T("Ein Linksklick auf das Tray-Symbol wechselt zwischen diesen beiden Plänen.")));
         var toggleFields = AppTheme.Fields(); var planA = PlanBox(Settings.TogglePlanA); var planB = PlanBox(Settings.TogglePlanB);
         planA.Name = "TogglePlanA"; planB.Name = "TogglePlanB";
-        AppTheme.FieldRow(toggleFields, "Linksklick · Plan A", planA); AppTheme.FieldRow(toggleFields, "Linksklick · Plan B", planB);
+        AppTheme.FieldRow(toggleFields, L.T("Linksklick · Plan A"), planA); AppTheme.FieldRow(toggleFields, L.T("Linksklick · Plan B"), planB);
         AppTheme.AddRow(toggleCard, toggleFields); AppTheme.AddRow(content, toggleCard);
 
-        var startupCard = AppTheme.Card("Mit Windows starten");
-        _startup = new DarkCheckBox { Text = startupEditable ? "PowerPlanTray beim Anmelden starten" : "Autostart im installierten MSIX testen", AutoSize = true, Checked = startupEnabled, Enabled = startupEditable };
+        var startupCard = AppTheme.Card(L.T("Mit Windows starten"));
+        _startup = new DarkCheckBox { Text = startupEditable ? L.T("PowerPlanTray beim Anmelden starten") : L.T("Autostart im installierten MSIX testen"), AutoSize = true, Checked = startupEnabled, Enabled = startupEditable };
         AppTheme.AddRow(startupCard, _startup);
-        var lastPlan = new DarkCheckBox { Text = "Zuletzt aktiven Energieplan beibehalten", AutoSize = true, Checked = Settings.UseLastPlan };
+        var lastPlan = new DarkCheckBox { Text = L.T("Zuletzt aktiven Energieplan beibehalten"), AutoSize = true, Checked = Settings.UseLastPlan };
         lastPlan.Name = "UseLastPlan";
         AppTheme.AddRow(startupCard, lastPlan);
         var startupFields = AppTheme.Fields(); var startPlan = PlanBox(Settings.StartupPlan);
         startPlan.Name = "StartupPlan";
-        AppTheme.FieldRow(startupFields, "Fester Plan beim Autostart", startPlan); AppTheme.AddRow(startupCard, startupFields);
+        AppTheme.FieldRow(startupFields, L.T("Fester Plan beim Autostart"), startPlan); AppTheme.AddRow(startupCard, startupFields);
         void UpdateStartup() => startupFields.Enabled = !lastPlan.Checked;
         lastPlan.CheckedChanged += (_, _) => UpdateStartup(); UpdateStartup();
         AppTheme.AddRow(content, startupCard);
 
-        var rulesCard = AppTheme.Card("App- und Zeitregeln");
+        var rulesCard = AppTheme.Card(L.T("App- und Zeitregeln"));
         var rulesSummary = AppTheme.Note("");
-        void UpdateSummary() => rulesSummary.Text = $"{Settings.Rules.Count} Regeln · Automatik {(Settings.RulesEnabled ? "aktiviert" : "deaktiviert")}. Manuelle Planwahl hat Vorrang.";
+        void UpdateSummary() => rulesSummary.Text = L.F($"{Settings.Rules.Count} Regeln · Automatik {(Settings.RulesEnabled ? L.T("aktiviert") : L.T("deaktiviert"))}. Manuelle Planwahl hat Vorrang.");
         UpdateSummary(); AppTheme.AddRow(rulesCard, rulesSummary);
-        var rulesButton = new Button { Text = "Regeln verwalten…", AutoSize = true, Dock = DockStyle.Left };
+        var rulesButton = new Button { Text = L.T("Regeln verwalten…"), AutoSize = true, Dock = DockStyle.Left };
         var rulesActions = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Top }; rulesActions.Controls.Add(rulesButton); AppTheme.AddRow(rulesCard, rulesActions);
         rulesButton.Click += (_, _) =>
         {
@@ -75,7 +75,7 @@ internal sealed class SettingsForm : Form
         };
         AppTheme.AddRow(content, rulesCard);
 
-        var codex = new DarkCheckBox { Text = "Codex-Erweiterung aktivieren", AutoSize = true, Checked = Settings.CodexStandbyEnabled };
+        var codex = new DarkCheckBox { Text = L.T("Codex-Erweiterung aktivieren"), AutoSize = true, Checked = Settings.CodexStandbyEnabled };
         codex.Name = "CodexEnabled";
         var grace = new DarkComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
         grace.Name = "CodexGrace";
@@ -83,13 +83,13 @@ internal sealed class SettingsForm : Form
         grace.SelectedItem = grace.Items.Contains(Settings.CodexGraceMinutes) ? Settings.CodexGraceMinutes : 15;
         if (codexAvailable)
         {
-            var codexCard = AppTheme.Card("Codex · optionaler Standby-Schutz");
+            var codexCard = AppTheme.Card(L.T("Codex · optionaler Standby-Schutz"));
             AppTheme.AddRow(codexCard, codex);
-            AppTheme.AddRow(codexCard, AppTheme.Note("Standardmäßig aus. Verhindert automatischen Standby während erkannter Codex-Aufgaben; die Auswertung bleibt lokal."));
-            var codexFields = AppTheme.Fields(); AppTheme.FieldRow(codexFields, "Nachlaufzeit (Minuten)", grace);
+            AppTheme.AddRow(codexCard, AppTheme.Note(L.T("Standardmäßig aus. Verhindert automatischen Standby während erkannter Codex-Aufgaben; die Auswertung bleibt lokal.")));
+            var codexFields = AppTheme.Fields(); AppTheme.FieldRow(codexFields, L.T("Nachlaufzeit (Minuten)"), grace);
             AppTheme.AddRow(codexCard, codexFields);
             var status = AppTheme.Note("");
-            void UpdateCodex() { codexFields.Enabled = codex.Checked; status.Text = codex.Checked ? $"Status bei Öffnen: {codexStatus}. Änderungen gelten nach Speichern." : "Standby-Schutz ausgeschaltet"; }
+            void UpdateCodex() { codexFields.Enabled = codex.Checked; status.Text = codex.Checked ? L.F($"Status bei Öffnen: {codexStatus}. Änderungen gelten nach Speichern.") : L.T("Standby-Schutz ausgeschaltet"); }
             codex.CheckedChanged += (_, _) => UpdateCodex(); UpdateCodex();
             AppTheme.AddRow(codexCard, status); AppTheme.AddRow(content, codexCard);
         }
@@ -102,13 +102,13 @@ internal sealed class SettingsForm : Form
         versionLabel.Margin = new Padding(0, 0, 12, 0);
         var identity = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty, Anchor = AnchorStyles.Left };
         identity.Controls.Add(versionLabel, 0, 0);
-        var aboutButton = new Button { Text = "Über…", AutoSize = true, Anchor = AnchorStyles.Left };
+        var aboutButton = new Button { Text = L.T("Über…"), AutoSize = true, Anchor = AnchorStyles.Left };
         aboutButton.Click += (_, _) => { using var about = new AboutForm(version) { Icon = Icon }; about.ShowDialog(this); };
         identity.Controls.Add(aboutButton, 1, 0);
         footer.Controls.Add(identity, 0, 0);
         var actions = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty };
-        var cancel = new Button { Text = "Abbrechen", AutoSize = true, DialogResult = DialogResult.Cancel };
-        var save = new Button { Text = "Speichern", AutoSize = true };
+        var cancel = new Button { Text = L.T("Abbrechen"), AutoSize = true, DialogResult = DialogResult.Cancel };
+        var save = new Button { Text = L.T("Speichern"), AutoSize = true };
         save.Click += (_, _) =>
         {
             if (planA.SelectedItem is RulePlan a) Settings.TogglePlanA = a.Guid;

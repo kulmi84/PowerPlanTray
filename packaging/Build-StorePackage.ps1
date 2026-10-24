@@ -3,8 +3,9 @@ param(
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$IdentityName,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Publisher,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$PublisherDisplayName,
-    [ValidateNotNullOrEmpty()][string]$DisplayName = 'PowerPlanTray',
-    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.9.0',
+    [ValidateNotNullOrEmpty()][string]$DisplayName = 'PowerPlanTray – Energiepläne automatisch wechseln',
+    [ValidateNotNullOrEmpty()][string]$EnglishDisplayName = 'PowerPlanTray – Automatic Power Plan Switching',
+    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.10.0',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../artifacts/store'),
     [string]$MakeAppxPath,
     [string]$DotnetPath = 'dotnet'
@@ -42,11 +43,20 @@ $manifest.Package.Identity.SetAttribute('Name', $IdentityName)
 $manifest.Package.Identity.SetAttribute('Publisher', $Publisher)
 $manifest.Package.Identity.SetAttribute('Version', $PackageVersion)
 $manifest.Package.Properties.PublisherDisplayName = $PublisherDisplayName
-$manifest.Package.Properties.DisplayName = $DisplayName
-$manifest.SelectSingleNode("//*[local-name()='VisualElements']").SetAttribute('DisplayName', $DisplayName)
-$manifest.SelectSingleNode("//*[local-name()='StartupTask']").SetAttribute('DisplayName', $DisplayName)
+$manifest.Package.Properties.DisplayName = 'ms-resource:AppDisplayName'
+$manifest.Package.Properties.Description = 'ms-resource:AppDescription'
+$manifest.SelectSingleNode("//*[local-name()='VisualElements']").SetAttribute('DisplayName', 'ms-resource:AppDisplayName')
+$manifest.SelectSingleNode("//*[local-name()='VisualElements']").SetAttribute('Description', 'ms-resource:AppDescription')
+$manifest.SelectSingleNode("//*[local-name()='StartupTask']").SetAttribute('DisplayName', 'ms-resource:AppDisplayName')
 $manifest.Save((Join-Path $stage 'AppxManifest.xml'))
 
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Strings') -Destination $stage -Recurse
+foreach ($language in @('de-DE', 'en-US')) {
+    $resourcePath = Join-Path $stage "Strings/$language/Resources.resw"
+    [xml]$resources = Get-Content -LiteralPath $resourcePath -Raw
+    ($resources.root.data | Where-Object name -eq 'AppDisplayName').value = if ($language -eq 'de-DE') { $DisplayName } else { $EnglishDisplayName }
+    $resources.Save($resourcePath)
+}
 # Reuse PowerPlanTray's own icon. No reference screenshots or third-party artwork.
 Add-Type -AssemblyName System.Drawing
 $iconBytes = [Convert]::FromBase64String([IO.File]::ReadAllText((Join-Path $projectRoot 'assets/PowerPlanTray.ico.b64')))
@@ -71,6 +81,20 @@ try {
     }
 }
 finally { $bitmap.Dispose(); $icon.Dispose(); $stream.Dispose() }
+
+$makePri = Join-Path (Split-Path $MakeAppxPath -Parent) 'makepri.exe'
+if (-not (Test-Path -LiteralPath $makePri)) { throw 'MakePri.exe required for localized Store names.' }
+$priConfig = Join-Path $outputRoot ('priconfig-' + [guid]::NewGuid().ToString('N') + '.xml')
+& $makePri createconfig /cf $priConfig /dq en-US
+if ($LASTEXITCODE -ne 0) { throw 'Resource configuration failed.' }
+# Keep both languages in one self-contained MSIX instead of generating
+# detached language resource packages.
+[xml]$configuration = Get-Content -LiteralPath $priConfig -Raw
+$configuration.resources.packaging.RemoveAll()
+$configuration.Save($priConfig)
+& $makePri new /pr $stage /cf $priConfig /of (Join-Path $stage 'resources.pri') /mn (Join-Path $stage 'AppxManifest.xml')
+if ($LASTEXITCODE -ne 0) { throw 'Localized package resource generation failed.' }
+
 
 $package = Join-Path $outputRoot "PowerPlanTray-Store-$PackageVersion-x64.msix"
 if (Test-Path -LiteralPath $package) { throw "Output already exists: $package. Choose a new version or output directory." }

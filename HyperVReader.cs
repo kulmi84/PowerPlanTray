@@ -4,7 +4,7 @@ namespace PowerPlanTray;
 
 internal sealed record HyperVMachine(string Id, string Name, bool? Running)
 {
-    public override string ToString() => $"{Name} · {(Running is null ? "Status nicht geladen" : Running.Value ? "Läuft" : "Nicht gestartet")}";
+    public override string ToString() => $"{Name} · {(Running is null ? L.T("Status nicht geladen") : Running.Value ? L.T("Läuft") : L.T("Nicht gestartet"))}";
 }
 internal sealed record HyperVSnapshot(IReadOnlyList<HyperVMachine>? Machines, string? Error);
 
@@ -42,7 +42,7 @@ internal static class HyperVReader
         }
         catch (Exception ex) when (ex is ManagementException or UnauthorizedAccessException or System.Runtime.InteropServices.COMException or System.Security.SecurityException)
         {
-            return new(null, "Hyper-V nicht erreichbar. Ist Hyper-V installiert und Ihr Konto für die Hyper-V-Verwaltung berechtigt? (Hyper-V-Administratoren)");
+            return new(null, L.T("Hyper-V nicht erreichbar. Ist Hyper-V installiert und Ihr Konto für die Hyper-V-Verwaltung berechtigt? (Hyper-V-Administratoren)"));
         }
     }
 }

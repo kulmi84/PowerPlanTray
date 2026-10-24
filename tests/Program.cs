@@ -1,6 +1,7 @@
 using PowerPlanTray;
 using System.Text.Json;
 
+System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("de-DE");
 var count = 0;
 void Check(bool condition, string description)
 {
@@ -92,4 +93,14 @@ Check(VmAt(33, "vm-two") is null, "Other running VM cannot extend selected VM gr
 var savedVm = JsonSerializer.Deserialize<EnergyRule>(JsonSerializer.Serialize(vmRule))!;
 Check(savedVm.Kind == EnergyRuleKind.HyperV && savedVm.VmId == "vm-one" && savedVm.VmName == "Renamed VM", "Hyper-V identity survives settings persistence");
 Check((int)EnergyRuleKind.App == 0 && (int)EnergyRuleKind.Schedule == 1, "Existing rule kind values remain compatible");
+var priorCulture = System.Globalization.CultureInfo.CurrentUICulture;
+System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+Check(L.T("Speichern") == "Save", "English UI uses translated labels");
+Check(L.F($"Aktiv: {"Meine VM"}") == "Active: Meine VM", "Localization preserves user-defined names");
+Check(L.F($"{30} Minuten") == "30 minutes", "Dynamic menu text is localized");
+System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("de-AT");
+Check(L.T("Speichern") == "Speichern", "German variants retain German labels");
+System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
+Check(L.T("Abbrechen") == "Cancel", "Other Windows display languages fall back to English");
+System.Globalization.CultureInfo.CurrentUICulture = priorCulture;
 Console.WriteLine($"{count} checks passed.");

@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Localization.cs" Link="Localization.cs" />
     <Compile Include="../EnergyRules.cs" Link="EnergyRules.cs" />
     <Compile Include="../AppSettings.cs" Link="AppSettings.cs" />
   </ItemGroup>

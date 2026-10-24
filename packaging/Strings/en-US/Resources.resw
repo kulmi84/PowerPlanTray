@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <data name="AppDisplayName" xml:space="preserve">
+    <value>PowerPlanTray – Automatic Power Plan Switching</value>
+  </data>
+  <data name="AppDescription" xml:space="preserve">
+    <value>Switch power plans automatically by app, schedule, or Hyper-V VM.</value>
+  </data>
+</root>

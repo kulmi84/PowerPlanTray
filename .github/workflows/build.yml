@@ -3,7 +3,7 @@ name: Build portable EXE
 on:
   workflow_dispatch:
   push:
-    branches: [ main, feat/microsoft-store-msix ]
+    branches: [ main, feat/microsoft-store-msix, feat/english-localization ]
   pull_request:
     branches: [ main, feat/app-time-rules-beta-1 ]
 

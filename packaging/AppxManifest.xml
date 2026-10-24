@@ -10,16 +10,16 @@
   <Properties>
     <DisplayName>PowerPlanTray</DisplayName>
     <PublisherDisplayName>Placeholder</PublisherDisplayName>
-    <Description>Energiepläne im Tray wechseln – mit App- und Zeitregeln.</Description>
+    <Description>EnergieplÃ¤ne im Tray wechseln â€“ mit App- und Zeitregeln.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
-  <Resources><Resource Language="de-DE" /></Resources>
+  <Resources><Resource Language="de-DE" /><Resource Language="en-US" /></Resources>
   <Dependencies>
     <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
   <Applications>
     <Application Id="PowerPlanTray" Executable="PowerPlanTray.exe" EntryPoint="Windows.FullTrustApplication">
-      <uap:VisualElements DisplayName="PowerPlanTray" Description="Energiepläne im Tray wechseln – mit App- und Zeitregeln."
+      <uap:VisualElements DisplayName="PowerPlanTray" Description="EnergieplÃ¤ne im Tray wechseln â€“ mit App- und Zeitregeln."
                           Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png"
                           BackgroundColor="transparent" />
       <Extensions>

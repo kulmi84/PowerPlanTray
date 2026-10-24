@@ -28,7 +28,7 @@ internal static class StoreIntegration
         if (!enabled)
         {
             if (task.State == StartupTaskState.EnabledByPolicy)
-                return "Der Autostart wird durch eine Windows-Richtlinie verwaltet.";
+                return L.T("Der Autostart wird durch eine Windows-Richtlinie verwaltet.");
             task.Disable();
             return null;
         }
@@ -36,9 +36,9 @@ internal static class StoreIntegration
         return state switch
         {
             StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy => null,
-            StartupTaskState.DisabledByUser => "Der Autostart wurde in Windows deaktiviert. Bitte PowerPlanTray unter Einstellungen > Apps > Autostart wieder aktivieren.",
-            StartupTaskState.DisabledByPolicy => "Der Autostart wird durch eine Windows-Richtlinie verhindert.",
-            _ => "Der Autostart konnte nicht aktiviert werden. Bitte die Windows-Autostart-Einstellungen prüfen."
+            StartupTaskState.DisabledByUser => L.T("Der Autostart wurde in Windows deaktiviert. Bitte PowerPlanTray unter Einstellungen > Apps > Autostart wieder aktivieren."),
+            StartupTaskState.DisabledByPolicy => L.T("Der Autostart wird durch eine Windows-Richtlinie verhindert."),
+            _ => L.T("Der Autostart konnte nicht aktiviert werden. Bitte die Windows-Autostart-Einstellungen prüfen.")
         };
     }
 
