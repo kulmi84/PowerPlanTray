@@ -1,8 +1,14 @@
 # PowerPlanTray
 
+Deutsch · [English](README.en.md)
+
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Aktuelle Version: **1.6.0**.
+Version dieses Entwicklungsstands: **1.6.1**. Aktuell veröffentlichte Version: **1.6.0**.
+
+## Deutsch und Englisch
+
+Die Oberfläche folgt automatisch der Windows-Anzeigesprache: Deutsch bei deutscher Anzeigesprache, sonst Englisch. Eigene Regel-, VM- und Energieplannamen bleiben unverändert. Das Store-Paket enthält beide Sprachen.
 
 ## Einstellungen und Über-Dialog · Beta 9
 

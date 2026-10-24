@@ -1,4 +1,4 @@
-# Store-Textentwurf: PowerPlanTray
+# Store-Textentwurf: PowerPlanTray – Energiepläne automatisch wechseln
 
 ## Kurzbeschreibung
 
@@ -18,6 +18,8 @@ Die optionale Codex-Erweiterung verhindert während erkannter Codex-Aufgaben den
 - Zwei frei wählbare Pläne für den Linksklick-Wechsel
 - App-Regeln mit Startverzögerung und Nachlauf
 - Zeitfenster mit Wochentagen, auch über Mitternacht
+- Individuelle Microsoft-Hyper-V-VM-Regeln
+- Oberfläche auf Deutsch und Englisch, passend zur Windows-Anzeigesprache
 - Gemeinsame Regelprioritäten und Wiederherstellung des vorherigen Plans
 - Optionaler Autostart und Energieplan beim Windows-Start
 - Optionaler Codex-Standby-Schutz, standardmäßig aus
@@ -25,7 +27,7 @@ Die optionale Codex-Erweiterung verhindert während erkannter Codex-Aufgaben den
 
 ## System und Hinweise
 
-Windows 11, x64. Die Anwendung läuft im Infobereich. Zeitregeln funktionieren, solange die App läuft, und wecken den PC nicht auf. VM-Regeln erkennen frei gewählte Prozessnamen, keine VM-spezifischen Betriebszustände. Der Codex-Schutz verhindert automatischen Leerlauf-Standby, keine manuell angeordnete Energiesparaktion.
+Windows 11, x64. Die Anwendung läuft im Infobereich. Zeitregeln funktionieren, solange die App läuft, und wecken den PC nicht auf. Hyper-V-Regeln erkennen einzelne lokale VMs anhand ihrer eindeutigen ID und ihres Betriebszustands. Hyper-V-Verwaltungsrechte sind erforderlich. Der Codex-Schutz verhindert automatischen Leerlauf-Standby, keine manuell angeordnete Energiesparaktion.
 
 ## Support
 

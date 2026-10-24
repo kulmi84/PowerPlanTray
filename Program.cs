@@ -13,7 +13,7 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.6.0";
+    private const string AppVersion = "1.6.1";
 #if LOCAL_TEST
     private static readonly bool LocalTest = true;
 #else
@@ -137,7 +137,7 @@ internal static class Program
                     var processes = EnergyRuleEngine.ReadProcesses();
                     var needsHyperV = _settings.Rules.Any(r => r.Enabled && r.Kind == EnergyRuleKind.HyperV);
                     var hyperV = needsHyperV ? HyperVReader.Poll() : null;
-                    if (needsHyperV && hyperV?.Error is not null) _automation.ReportUnavailable("Hyper-V nicht erreichbar (Berechtigung prüfen)");
+                    if (needsHyperV && hyperV?.Error is not null) _automation.ReportUnavailable(L.T("Hyper-V nicht erreichbar (Berechtigung prüfen)"));
                     if (processes is not null && (!needsHyperV || hyperV?.Machines is not null))
                     {
                         var available = _plans.Select(p => p.Guid).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -169,21 +169,21 @@ internal static class Program
                 });
             }
             _menu.Items.Add(new ToolStripSeparator());
-            _menu.Items.Add(new ToolStripMenuItem("App- und Zeitregeln…", null, (_, _) => ShowRules()));
-            _menu.Items.Add(new ToolStripMenuItem("Automatische Regeln aktivieren", null, (_, _) =>
+            _menu.Items.Add(new ToolStripMenuItem(L.T("App- und Zeitregeln…"), null, (_, _) => ShowRules()));
+            _menu.Items.Add(new ToolStripMenuItem(L.T("Automatische Regeln aktivieren"), null, (_, _) =>
             {
                 _settings.RulesEnabled = !_settings.RulesEnabled;
                 _ruleEngine.Reset();
                 SaveSettings(_settings);
                 RefreshState();
             }) { Checked = _settings.RulesEnabled });
-            _menu.Items.Add(new ToolStripMenuItem($"Regeln: {(_settings.RulesEnabled ? _automation.Status : "Deaktiviert")}") { Enabled = false });
+            _menu.Items.Add(new ToolStripMenuItem(L.F($"Regeln: {(_settings.RulesEnabled ? _automation.Status : L.T("Deaktiviert"))}")) { Enabled = false });
             if (_automation.Paused)
-                _menu.Items.Add(new ToolStripMenuItem("Regeln jetzt fortsetzen", null, (_, _) => { _automation.Resume(); RefreshState(); }));
+                _menu.Items.Add(new ToolStripMenuItem(L.T("Regeln jetzt fortsetzen"), null, (_, _) => { _automation.Resume(); RefreshState(); }));
             _menu.Items.Add(new ToolStripSeparator());
             if (CodexEdition && _settings.CodexStandbyEnabled)
             {
-            _menu.Items.Add(new ToolStripMenuItem("Codex-Standby-Sperre aktivieren", null, (_, _) =>
+            _menu.Items.Add(new ToolStripMenuItem(L.T("Codex-Standby-Sperre aktivieren"), null, (_, _) =>
             {
                 _settings.CodexStandbyEnabled = !_settings.CodexStandbyEnabled;
                 SaveSettings(_settings);
@@ -191,11 +191,11 @@ internal static class Program
                 // The next Opening event refreshes the menu; do not rebuild it mid-click.
             }) { Checked = _settings.CodexStandbyEnabled });
 
-            var graceMenu = new ToolStripMenuItem("Codex-Nachlaufzeit") { Enabled = _settings.CodexStandbyEnabled };
+            var graceMenu = new ToolStripMenuItem(L.T("Codex-Nachlaufzeit")) { Enabled = _settings.CodexStandbyEnabled };
             foreach (var minutes in new[] { 5, 10, 15, 30, 60 })
             {
                 var selectedMinutes = minutes;
-                graceMenu.DropDownItems.Add(new ToolStripMenuItem($"{minutes} Minuten", null, (_, _) =>
+                graceMenu.DropDownItems.Add(new ToolStripMenuItem(L.F($"{minutes} Minuten"), null, (_, _) =>
                 {
                     _settings.CodexGraceMinutes = selectedMinutes;
                     SaveSettings(_settings);
@@ -207,15 +207,15 @@ internal static class Program
             _menu.Items.Add(new ToolStripMenuItem($"Codex: {_codexGuard.Status}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
             }
-            _menu.Items.Add(new ToolStripMenuItem("Einstellungen...", null, (_, _) => ShowSettings()));
-            _menu.Items.Add(new ToolStripMenuItem("Über PowerPlanTray…", null, (_, _) =>
+            _menu.Items.Add(new ToolStripMenuItem(L.T("Einstellungen..."), null, (_, _) => ShowSettings()));
+            _menu.Items.Add(new ToolStripMenuItem(L.T("Über PowerPlanTray…"), null, (_, _) =>
             {
                 using var about = new AboutForm(AppVersion) { Icon = _notifyIcon.Icon };
                 about.ShowDialog();
             }));
             _menu.Items.Add(new ToolStripMenuItem($"PowerPlanTray v{AppVersion}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
-            _menu.Items.Add(new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()));
+            _menu.Items.Add(new ToolStripMenuItem(L.T("Beenden"), null, (_, _) => ExitThread()));
         }
 
         private void ToggleSelectedPlans()
@@ -295,11 +295,11 @@ internal static class Program
                     try
                     {
                         if (await StoreIntegration.SetStartupEnabledAsync(form.StartupEnabled) is { } message)
-                            MessageBox.Show(message, "PowerPlanTray – Autostart", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show(message, L.T("PowerPlanTray – Autostart"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                     catch
                     {
-                        MessageBox.Show("Die Windows-Autostart-Einstellung konnte nicht geändert werden.", "PowerPlanTray – Autostart");
+                        MessageBox.Show(L.T("Die Windows-Autostart-Einstellung konnte nicht geändert werden."), L.T("PowerPlanTray – Autostart"));
                     }
                 }
                 else if (!StoreIntegration.IsPackaged && !LocalTest) SetStartupEnabled(form.StartupEnabled);
@@ -333,7 +333,7 @@ internal static class Program
 
         private Icon GetIconForPlan(string? planName)
         {
-            if (planName?.Equals("Windows Höchstleistung", StringComparison.OrdinalIgnoreCase) == true) return _windowsBoltIcon;
+            if (planName?.Equals(L.T("Windows Höchstleistung"), StringComparison.OrdinalIgnoreCase) == true) return _windowsBoltIcon;
             if (planName?.Equals("Höchstleistung HP", StringComparison.OrdinalIgnoreCase) == true) return _boltIcon;
             if (planName?.StartsWith("HP Optimized", StringComparison.OrdinalIgnoreCase) == true) return _hpIcon;
             if (planName?.Equals("Leise / Remote", StringComparison.OrdinalIgnoreCase) == true) return _quietIcon;
@@ -356,7 +356,7 @@ internal static class Program
                     result.Add(new PowerPlan(guid, nameMatch.Groups["name"].Value.Trim(), guid));
                 }
             }
-            result.Add(new PowerPlan(WindowsHighPerformanceGuid, "Windows Höchstleistung", WindowsHighPerformanceAlias));
+            result.Add(new PowerPlan(WindowsHighPerformanceGuid, L.T("Windows Höchstleistung"), WindowsHighPerformanceAlias));
             return result;
         }
 

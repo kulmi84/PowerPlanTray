@@ -26,7 +26,7 @@ internal sealed class CodexStandbyGuard : IDisposable
     private int _graceMinutes = 15;
     private IntPtr _requestHandle = IntPtr.Zero;
     private bool _requestActive;
-    private string _status = "Deaktiviert";
+    private string _status = L.T("Deaktiviert");
 
     public CodexStandbyGuard()
     {
@@ -50,7 +50,7 @@ internal sealed class CodexStandbyGuard : IDisposable
             {
                 _timer.Change(Timeout.Infinite, Timeout.Infinite);
                 ReleaseRequest();
-                _status = "Deaktiviert";
+                _status = L.T("Deaktiviert");
             }
             else
             {
@@ -97,17 +97,17 @@ internal sealed class CodexStandbyGuard : IDisposable
                 {
                     if (!AcquireRequest())
                     {
-                        _status = "Fehler: Windows-Energieanforderung fehlgeschlagen";
+                        _status = L.T("Fehler: Windows-Energieanforderung fehlgeschlagen");
                         return;
                     }
                     _status = activeCount > 0
-                        ? $"Codex arbeitet ({activeCount} Sitzung(en)) - Standby gesperrt"
-                        : $"Nachlauf bis {graceUntil.ToLocalTime():HH:mm:ss} - Standby gesperrt";
+                        ? L.F($"Codex arbeitet ({activeCount} Sitzung(en)) - Standby gesperrt")
+                        : L.F($"Nachlauf bis {graceUntil.ToLocalTime():HH:mm:ss} - Standby gesperrt");
                 }
                 else
                 {
                     ReleaseRequest();
-                    _status = "Bereit - Windows-Standby normal";
+                    _status = L.T("Bereit - Windows-Standby normal");
                 }
 
                 // Drop obsolete tails; retained empty/old sessions do not prevent sleep.
@@ -120,7 +120,7 @@ internal sealed class CodexStandbyGuard : IDisposable
             {
                 // Fail safe: do not keep an old request on an unreadable log.
                 ReleaseRequest();
-                _status = "Codex-Protokolle nicht lesbar - Standby normal";
+                _status = L.T("Codex-Protokolle nicht lesbar - Standby normal");
             }
             finally
             {
@@ -223,7 +223,7 @@ internal sealed class CodexStandbyGuard : IDisposable
             {
                 Version = 0,
                 Flags = 1, // POWER_REQUEST_CONTEXT_SIMPLE_STRING
-                Reason = "Codex arbeitet oder Codex-Nachlaufzeit"
+                Reason = L.T("Codex arbeitet oder Codex-Nachlaufzeit")
             };
             _requestHandle = PowerCreateRequest(ref context);
             if (_requestHandle == IntPtr.Zero || _requestHandle == new IntPtr(-1))
@@ -301,7 +301,7 @@ internal sealed class CodexStandbyGuard : IDisposable
 // The standard edition contains no session watcher or standby power request.
 internal sealed class CodexStandbyGuard : IDisposable
 {
-    public string Status => "Nicht enthalten";
+    public string Status => L.T("Nicht enthalten");
     public void Configure(bool enabled, int graceMinutes) { }
     public void Dispose() { }
 }

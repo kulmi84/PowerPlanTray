@@ -7,9 +7,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>PowerPlanTray</AssemblyName>
     <RootNamespace>PowerPlanTray</RootNamespace>
-    <Version>1.6.0</Version>
-    <AssemblyVersion>1.6.0.0</AssemblyVersion>
-    <FileVersion>1.6.0.0</FileVersion>
+    <Version>1.6.1</Version>
+    <AssemblyVersion>1.6.1.0</AssemblyVersion>
+    <FileVersion>1.6.1.0</FileVersion>
     <CodexEdition Condition="'$(CodexEdition)' == ''">true</CodexEdition>
     <DefineConstants Condition="'$(CodexEdition)' == 'true'">$(DefineConstants);CODEX_EDITION</DefineConstants>
     <DefineConstants Condition="'$(LocalTest)' == 'true'">$(DefineConstants);LOCAL_TEST</DefineConstants>

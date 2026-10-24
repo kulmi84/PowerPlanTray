@@ -11,12 +11,12 @@ Im Microsoft Partner Center einen MSIX-App-Eintrag mit dem Namen PowerPlanTray r
   -IdentityName '<Package/Identity/Name aus Partner Center>' `
   -Publisher '<Package/Identity/Publisher aus Partner Center>' `
   -PublisherDisplayName '<PublisherDisplayName aus Partner Center>' `
-  -PackageVersion '1.6.9.0'
+  -PackageVersion '1.6.10.0'
 ```
 
 Voraussetzungen: Windows, .NET 8 SDK und Windows SDK mit MakeAppx. Alternativ nach Aufnahme dieses Workflows in den Hauptbranch **Build Microsoft Store MSIX** in GitHub Actions mit denselben Identitätswerten starten. Das Paket wird stets mit Codex-Unterstützung gebaut, die zur Laufzeit standardmäßig deaktiviert ist.
 
-Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.9.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
+Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.10.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
 
 Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören nicht in die numerische MSIX-Version. Dieser Stand basiert auf 1.6.0; zunächst als privates Paket/Flight testen und vor einer öffentlichen Veröffentlichung einen entsprechend geprüften stabilen Stand verwenden. Versionen bei späteren Uploads passend erhöhen.
 
@@ -43,3 +43,7 @@ Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören
 - [Win32-Apps über den Microsoft Store verteilen](https://learn.microsoft.com/en-us/windows/apps/distribute-through-store/how-to-distribute-your-win32-app-through-microsoft-store)
 - [Paketanforderungen und Versionierung](https://learn.microsoft.com/en-us/windows/apps/publish/publish-your-app/package-version-numbering)
 - [Windows StartupTask](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.startuptask)
+
+## Sprachen
+
+Das Paket enthält de-DE und en-US sowie lokalisierte Paketnamen über resources.pri. MakePri.exe muss neben MakeAppx.exe im Windows SDK vorhanden sein. Beide Sprachen bleiben im selben MSIX enthalten. Die Oberfläche folgt der Windows-Anzeigesprache; eigene Namen werden nicht übersetzt. Englischer Store-Text: store-listing-en-US.md.

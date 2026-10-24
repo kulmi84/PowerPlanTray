@@ -7,7 +7,7 @@ internal enum EnergyRuleKind { App, Schedule, HyperV }
 internal sealed class EnergyRule
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
-    public string Name { get; set; } = "Neue Regel";
+    public string Name { get; set; } = L.T("Neue Regel");
     public bool Enabled { get; set; } = true;
     public EnergyRuleKind Kind { get; set; }
     public string PlanGuid { get; set; } = "";
@@ -124,7 +124,7 @@ internal sealed class EnergyPlanAutomation
     private string? _previous;
     private string? _applied;
     public bool Paused { get; private set; }
-    public string Status { get; private set; } = "Keine Regel aktiv";
+    public string Status { get; private set; } = L.T("Keine Regel aktiv");
 
     public EnergyPlanAutomation(Func<string, bool> activate) => _activate = activate;
 
@@ -133,7 +133,7 @@ internal sealed class EnergyPlanAutomation
         Paused = true;
         // A user's manual choice replaces the old baseline; do not restore over it.
         _previous = _applied = null;
-        Status = "Pausiert (manuelle Auswahl)";
+        Status = L.T("Pausiert (manuelle Auswahl)");
     }
 
     public void Resume() => Paused = false;
@@ -141,7 +141,7 @@ internal sealed class EnergyPlanAutomation
 
     public void Update(EnergyRule? rule, string? current)
     {
-        if (current is null) { Status = "Aktiver Energieplan nicht lesbar"; return; }
+        if (current is null) { Status = L.T("Aktiver Energieplan nicht lesbar"); return; }
         if (_applied is not null && !Same(current, _applied)) Pause();
         if (Paused)
         {
@@ -152,21 +152,21 @@ internal sealed class EnergyPlanAutomation
         {
             if (_previous is not null && _applied is not null && Same(current, _applied) && !Same(current, _previous))
             {
-                if (!_activate(_previous)) { Status = "Vorheriger Plan konnte nicht wiederhergestellt werden"; return; }
+                if (!_activate(_previous)) { Status = L.T("Vorheriger Plan konnte nicht wiederhergestellt werden"); return; }
             }
             _previous = _applied = null;
-            Status = "Keine Regel aktiv";
+            Status = L.T("Keine Regel aktiv");
             return;
         }
         if (!Same(current, rule.PlanGuid))
         {
             var baseline = _previous ?? current;
-            if (!_activate(rule.PlanGuid)) { Status = $"Planwechsel fehlgeschlagen: {rule.Name}"; return; }
+            if (!_activate(rule.PlanGuid)) { Status = L.F($"Planwechsel fehlgeschlagen: {rule.Name}"); return; }
             _previous = baseline;
             _applied = rule.PlanGuid;
         }
         else if (_previous is not null) _applied = rule.PlanGuid;
-        Status = $"Aktiv: {rule.Name}";
+        Status = L.F($"Aktiv: {rule.Name}");
     }
 
     public void Restore(string? current) => Update(null, current);
