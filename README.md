@@ -2,7 +2,17 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.6.0-beta.7**. Letzte stabile Version: **1.5.1**.
+Version dieses Pull Requests: **1.6.0-beta.8**. Letzte stabile Version: **1.5.1**.
+
+## Einstellungen und Über-Dialog · Beta 8
+
+Ist die Codex-Erweiterung in den Einstellungen ausgeschaltet, erscheinen keine Codex-Einträge im Rechtsklick-Menü. Zum Einschalten die Einstellungen öffnen.
+
+Die Fußzeile enthält die Version, **Entwickelt von Marcin Kulmaczewski** und **Über…**. Der Über-Dialog ist auch im Tray-Menü erreichbar und verlinkt Projekt, Fehlermeldung, Anleitung und Komponentenhinweise auf GitHub.
+
+![Aktuelle Einstellungen mit Entwicklerhinweis und Über-Schaltfläche](docs/screenshots/settings-beta8.png)
+
+![Über PowerPlanTray mit GitHub-Verweisen](docs/screenshots/about-beta8.png)
 
 ## Tray-Menü · Beta 7
 

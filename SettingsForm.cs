@@ -100,7 +100,16 @@ internal sealed class SettingsForm : Form
         versionLabel.Name = "SettingsVersion";
         versionLabel.Anchor = AnchorStyles.Left;
         versionLabel.Margin = new Padding(0, 0, 12, 0);
-        footer.Controls.Add(versionLabel, 0, 0);
+        var identity = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty, Anchor = AnchorStyles.Left };
+        identity.Controls.Add(versionLabel, 0, 0);
+        var credit = AppTheme.Note("Entwickelt von Marcin Kulmaczewski");
+        credit.Margin = new Padding(0, 2, 12, 0);
+        identity.Controls.Add(credit, 0, 1);
+        var aboutButton = new Button { Text = "Über…", AutoSize = true, Anchor = AnchorStyles.Left };
+        aboutButton.Click += (_, _) => { using var about = new AboutForm(version) { Icon = Icon }; about.ShowDialog(this); };
+        identity.Controls.Add(aboutButton, 1, 0);
+        identity.SetRowSpan(aboutButton, 2);
+        footer.Controls.Add(identity, 0, 0);
         var actions = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty };
         var cancel = new Button { Text = "Abbrechen", AutoSize = true, DialogResult = DialogResult.Cancel };
         var save = new Button { Text = "Speichern", AutoSize = true };

@@ -13,7 +13,7 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.6.0-beta.7";
+    private const string AppVersion = "1.6.0-beta.8";
 #if LOCAL_TEST
     private static readonly bool LocalTest = true;
 #else
@@ -181,7 +181,7 @@ internal static class Program
             if (_automation.Paused)
                 _menu.Items.Add(new ToolStripMenuItem("Regeln jetzt fortsetzen", null, (_, _) => { _automation.Resume(); RefreshState(); }));
             _menu.Items.Add(new ToolStripSeparator());
-            if (CodexEdition)
+            if (CodexEdition && _settings.CodexStandbyEnabled)
             {
             _menu.Items.Add(new ToolStripMenuItem("Codex-Standby-Sperre aktivieren", null, (_, _) =>
             {
@@ -208,6 +208,11 @@ internal static class Program
             _menu.Items.Add(new ToolStripSeparator());
             }
             _menu.Items.Add(new ToolStripMenuItem("Einstellungen...", null, (_, _) => ShowSettings()));
+            _menu.Items.Add(new ToolStripMenuItem("Über PowerPlanTray…", null, (_, _) =>
+            {
+                using var about = new AboutForm(AppVersion) { Icon = _notifyIcon.Icon };
+                about.ShowDialog();
+            }));
             _menu.Items.Add(new ToolStripMenuItem($"PowerPlanTray v{AppVersion}") { Enabled = false });
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(new ToolStripMenuItem("Beenden", null, (_, _) => ExitThread()));

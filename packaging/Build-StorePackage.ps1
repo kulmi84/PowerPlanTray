@@ -4,7 +4,7 @@ param(
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Publisher,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$PublisherDisplayName,
     [ValidateNotNullOrEmpty()][string]$DisplayName = 'PowerPlanTray',
-    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.6.0',
+    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.7.0',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../artifacts/store'),
     [string]$MakeAppxPath,
     [string]$DotnetPath = 'dotnet'
