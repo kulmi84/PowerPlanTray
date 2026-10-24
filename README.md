@@ -4,6 +4,40 @@ Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen
 
 Version dieses Pull Requests: **1.6.0-beta.6**. Letzte stabile Version: **1.5.1**.
 
+## Aktuelle Ansichten · Beta 6
+
+Aus der aktuellen Oberfläche erzeugte Ansichten mit Beispieldaten. Energiepläne, Apps und VMs sind frei wählbar; die gezeigten Regeln sind keine Voreinstellungen.
+
+### Einstellungen
+
+Dunkle Oberfläche, frei wählbare Energiepläne, Autostart und optionaler Codex-Schutz. Die Versionsnummer bleibt unten links sichtbar.
+
+![PowerPlanTray Beta 6: Einstellungen mit Versionsnummer unten links](docs/screenshots/settings-beta6.png)
+
+### Regeln und Priorität
+
+App-, Zeit- und Hyper-V-Regeln in einer gemeinsamen Liste. Die oberste passende Regel gewinnt.
+
+![Regelübersicht mit App-, Zeit- und Hyper-V-Beispiel](docs/screenshots/rules-beta6.png)
+
+### App-Regel
+
+Eine EXE auswählen und den gewünschten Energieplan zuordnen. Startverzögerung und Nachlaufzeit lassen sich getrennt einstellen.
+
+![App-Regel mit Startverzögerung und Nachlaufzeit](docs/screenshots/app-rule-beta6.png)
+
+### Zeitregel
+
+Energieplan für ausgewählte Wochentage und ein frei wählbares Zeitfenster festlegen.
+
+![Zeitregel für Montag bis Freitag von 08 bis 17 Uhr](docs/screenshots/schedule-rule-beta6.png)
+
+### Einzelne Microsoft-Hyper-V-VM
+
+Über **VMs laden** eine lokale VM auswählen. Die Regel ist über deren eindeutige ID zugeordnet. Der dargestellte VM-Eintrag ist ein Beispiel; sein Betriebszustand wurde in dieser Ansicht nicht abgefragt.
+
+![Hyper-V-Regel für die Beispiel-VM MK-VM01](docs/screenshots/hyperv-rule-beta6.png)
+
 ## Microsoft Store (Vorbereitung)
 
 Für den Microsoft Store wird eine gemeinsame MSIX-Ausgabe vorbereitet. Die **Codex-Erweiterung ist standardmäßig aus** und kann unter **Einstellungen** ein- oder ausgeschaltet werden. Store-Einstellungen werden getrennt von der portablen Version gespeichert; der Windows-Autostart verwendet die StartupTask-API. Build, Identitätsangaben und Prüfschritte stehen in [packaging/STORE-SUBMISSION.md](packaging/STORE-SUBMISSION.md), die Datenschutzhinweise in [docs/PRIVACY.md](docs/PRIVACY.md). Ein Store-Eintrag ist mit dieser Vorbereitung noch nicht veröffentlicht.
