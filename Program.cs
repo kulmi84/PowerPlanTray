@@ -29,6 +29,8 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        using var instance = new Mutex(true, @"Local\PowerPlanTray", out var firstInstance);
+        if (!firstInstance) return;
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         ApplicationConfiguration.Initialize();
         Application.Run(new TrayApplicationContext(args.Any(a => a.Equals(StartupArgument, StringComparison.OrdinalIgnoreCase))));
@@ -43,6 +45,7 @@ internal static class Program
         private readonly EnergyRuleEngine _ruleEngine = new();
         private readonly EnergyPlanAutomation _automation;
         private bool _editingRules;
+        private bool _showingSettings;
         private readonly Icon _boltIcon;
         private readonly Icon _windowsBoltIcon;
         private readonly Icon _hpIcon;
@@ -252,8 +255,12 @@ internal static class Program
                 RunPowerCfg($"/setactive {startupPlan.ActivateTarget}");
         }
 
-        private void ShowSettings()
+        private async void ShowSettings()
         {
+            if (_showingSettings) return;
+            _showingSettings = true;
+            try
+            {
             _plans = GetPowerPlans();
             EnsureToggleDefaults();
             EnsureStartupDefaults();
@@ -276,12 +283,15 @@ internal static class Program
             var labelB = new Label { Text = "Linksklick Plan B:", AutoSize = true, Location = new Point(18, 62) };
             var comboB = CreatePlanComboBox(new Point(195, 58), 285);
 
+            bool startupEnabled;
+            try { startupEnabled = StoreIntegration.IsPackaged ? await StoreIntegration.IsStartupEnabledAsync() : IsStartupEnabled(); }
+            catch { startupEnabled = false; }
             var startup = new CheckBox
             {
                 Text = "Mit Windows starten",
                 AutoSize = true,
                 Location = new Point(18, 108),
-                Checked = IsStartupEnabled()
+                Checked = startupEnabled
             };
 
             var startupPlanLabel = new Label
@@ -311,7 +321,7 @@ internal static class Program
 
             var codexEnabled = new CheckBox
             {
-                Text = "Codex-Standby-Sperre aktivieren",
+                Text = "Codex-Erweiterung (Standby-Schutz) aktivieren",
                 AutoSize = true,
                 Location = new Point(18, 244),
                 Checked = _settings.CodexStandbyEnabled
@@ -342,9 +352,10 @@ internal static class Program
 
             var codexStatus = new Label
             {
-                Text = $"Codex: {_codexGuard.Status}",
-                AutoSize = true,
-                Location = new Point(18, 325)
+                Text = $"Codex: {_codexGuard.Status}\nStandardmäßig aus; liest nur bei Aktivierung lokale Sitzungsereignisse.",
+                AutoSize = false,
+                Size = new Size(465, 36),
+                Location = new Point(18, 320)
             };
             var version = new Label { Text = $"Version {AppVersion}", AutoSize = true, Location = new Point(18, 362) };
             var ok = new Button { Text = "OK", DialogResult = DialogResult.OK, Location = new Point(322, 399), Size = new Size(75, 28) };
@@ -379,8 +390,22 @@ internal static class Program
 
             SaveSettings(_settings);
             _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
-            SetStartupEnabled(startup.Checked);
+            if (StoreIntegration.IsPackaged)
+            {
+                try
+                {
+                    if (await StoreIntegration.SetStartupEnabledAsync(startup.Checked) is { } message)
+                        MessageBox.Show(message, "PowerPlanTray – Autostart", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show("Die Windows-Autostart-Einstellung konnte nicht geändert werden.", "PowerPlanTray – Autostart");
+                }
+            }
+            else SetStartupEnabled(startup.Checked);
             RefreshState();
+            }
+            finally { _showingSettings = false; }
         }
 
         private ComboBox CreatePlanComboBox(Point location, int width = 255)
@@ -474,8 +499,9 @@ internal static class Program
             catch { }
         }
 
-        private static string GetSettingsPath() =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsDirectoryName, SettingsFileName);
+        private static string GetSettingsPath() => StoreIntegration.IsPackaged
+            ? Path.Combine(StoreIntegration.SettingsDirectory, SettingsFileName)
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), SettingsDirectoryName, SettingsFileName);
 
         private static bool IsStartupEnabled()
         {
@@ -627,18 +653,6 @@ internal static class Program
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool DestroyIcon(IntPtr hIcon);
-    }
-
-    private sealed class AppSettings
-    {
-        public string? TogglePlanA { get; set; }
-        public string? TogglePlanB { get; set; }
-        public string? StartupPlan { get; set; }
-        public bool UseLastPlan { get; set; } = true;
-        public bool CodexStandbyEnabled { get; set; } = false;
-        public int CodexGraceMinutes { get; set; } = 15;
-        public bool RulesEnabled { get; set; } = true;
-        public List<EnergyRule> Rules { get; set; } = new();
     }
 
     private sealed record PowerPlan(string Guid, string Name, string ActivateTarget)

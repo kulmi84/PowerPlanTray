@@ -8,6 +8,9 @@ void Check(bool condition, string description)
     count++; Console.WriteLine($"PASS {description}");
 }
 var monday = new DateTime(2026, 10, 26, 8, 0, 0);
+Check(!new AppSettings().CodexStandbyEnabled, "Fresh installations default Codex extension to off");
+Check(!JsonSerializer.Deserialize<AppSettings>("{}")!.CodexStandbyEnabled, "Older settings without Codex preference default to off");
+Check(JsonSerializer.Deserialize<AppSettings>("{\"CodexStandbyEnabled\":true}")!.CodexStandbyEnabled, "Explicit Codex opt-in survives restart");
 var utc = new DateTimeOffset(2026, 10, 26, 7, 0, 0, TimeSpan.Zero);
 var schedule = new EnergyRule { Kind = EnergyRuleKind.Schedule, PlanGuid = "time", Days = 2, StartMinute = 480, EndMinute = 1020 };
 Check(!schedule.IsScheduled(monday.AddMinutes(-1)), "Schedule excludes time before start");

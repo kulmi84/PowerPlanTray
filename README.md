@@ -4,6 +4,10 @@ Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen
 
 Version dieses Pull Requests: **1.6.0-beta.1**. Letzte stabile Version: **1.5.1**.
 
+## Microsoft Store (Vorbereitung)
+
+Für den Microsoft Store wird eine gemeinsame MSIX-Ausgabe vorbereitet. Die **Codex-Erweiterung ist standardmäßig aus** und kann unter **Einstellungen** ein- oder ausgeschaltet werden. Store-Einstellungen werden getrennt von der portablen Version gespeichert; der Windows-Autostart verwendet die StartupTask-API. Build, Identitätsangaben und Prüfschritte stehen in [packaging/STORE-SUBMISSION.md](packaging/STORE-SUBMISSION.md), die Datenschutzhinweise in [docs/PRIVACY.md](docs/PRIVACY.md). Ein Store-Eintrag ist mit dieser Vorbereitung noch nicht veröffentlicht.
+
 ## Neu in 1.6.0-beta.1: App- und Zeitregeln
 
 Über **App- und Zeitregeln…** im Tray oder in den Einstellungen lassen sich beliebige Programme und Zeitfenster einem Energieplan zuordnen. Beide Editionen enthalten diese Automatik. Es sind zunächst keine Regeln angelegt; ohne eigene Regeln ändert sich das bisherige Verhalten nicht.
