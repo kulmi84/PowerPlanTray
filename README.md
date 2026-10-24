@@ -2,7 +2,7 @@
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Version dieses Pull Requests: **1.6.0-beta.1**. Letzte stabile Version: **1.5.1**.
+Version dieses Pull Requests: **1.6.0-beta.5**. Letzte stabile Version: **1.5.1**.
 
 ## Microsoft Store (Vorbereitung)
 
@@ -18,7 +18,20 @@ Für den Microsoft Store wird eine gemeinsame MSIX-Ausgabe vorbereitet. Die **Co
 - Die Regel gilt für alle laufenden Prozesse mit diesem Dateinamen, unabhängig vom Installationsordner. Groß-/Kleinschreibung und die Endung `.exe` spielen keine Rolle.
 - **Startverzögerung**: Die App muss für die eingestellte Dauer durchgehend erkannt werden (0 = sofort).
 - **Nachlaufzeit**: Nach Ende der App bleibt die Regel noch für die gewählte Dauer aktiv (0 = kein Nachlauf).
-- Für eine VM den Prozess der laufenden virtuellen Maschine wählen, nicht nur das Verwaltungsfenster. Die Erkennung erfolgt über den frei gewählten Prozessnamen; ein VM-spezifischer Betriebszustand wird nicht abgefragt.
+- App-Regeln erkennen alle gleichnamigen Prozesse. Für einzelne Microsoft-Hyper-V-VMs den zusätzlichen Hyper-V-Auslöser verwenden.
+
+### Microsoft Hyper-V: VM läuft
+
+- Als Auslöser **Microsoft Hyper-V: VM läuft** auswählen, **VMs laden** anklicken und die gewünschte lokale VM wählen.
+- Die Zuordnung erfolgt anhand der eindeutigen VM-ID und bleibt bei einer Umbenennung erhalten.
+- Nur der Zustand **Läuft** aktiviert die Regel. Ausgeschaltete, gespeicherte und pausierte VMs aktivieren sie nicht.
+- Startverzögerung und Nachlauf gelten auch hier. Bei mehreren passenden VM-Regeln gewinnt die oberste Regel.
+- Hyper-V muss installiert und das Windows-Konto zur Verwaltung berechtigt sein, beispielsweise über die Gruppe **Hyper-V-Administratoren**.
+- Bei nicht erreichbarem Hyper-V wird die Automatik ausgesetzt und der Energieplan bleibt erhalten; ein Hinweis erscheint im Tray-Status.
+
+### Oberfläche in Beta 5
+
+Dunkle Einstellungen mit Windows-Checkboxen, korrigierten Hintergründen und überlagerungsfreiem Text. Der Wechsel zwischen App-, Zeit- und VM-Regeln erfolgt gemeinsam mit gepufferter Darstellung, um Flackern durch Zwischenzustände zu vermeiden. Die Codex-Erweiterung bleibt bei frischen Einstellungen standardmäßig aus.
 
 ### Zeitfenster
 

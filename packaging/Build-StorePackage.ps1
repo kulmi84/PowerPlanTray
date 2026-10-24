@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$IdentityName,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$Publisher,
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$PublisherDisplayName,
-    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.0.0',
+    [ValidateNotNullOrEmpty()][string]$DisplayName = 'PowerPlanTray',
+    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.4.0',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../artifacts/store'),
     [string]$MakeAppxPath,
     [string]$DotnetPath = 'dotnet'
@@ -41,6 +42,9 @@ $manifest.Package.Identity.SetAttribute('Name', $IdentityName)
 $manifest.Package.Identity.SetAttribute('Publisher', $Publisher)
 $manifest.Package.Identity.SetAttribute('Version', $PackageVersion)
 $manifest.Package.Properties.PublisherDisplayName = $PublisherDisplayName
+$manifest.Package.Properties.DisplayName = $DisplayName
+$manifest.SelectSingleNode("//*[local-name()='VisualElements']").SetAttribute('DisplayName', $DisplayName)
+$manifest.SelectSingleNode("//*[local-name()='StartupTask']").SetAttribute('DisplayName', $DisplayName)
 $manifest.Save((Join-Path $stage 'AppxManifest.xml'))
 
 # Reuse PowerPlanTray's own icon. No reference screenshots or third-party artwork.

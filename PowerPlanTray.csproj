@@ -7,11 +7,12 @@
     <Nullable>enable</Nullable>
     <AssemblyName>PowerPlanTray</AssemblyName>
     <RootNamespace>PowerPlanTray</RootNamespace>
-    <Version>1.6.0-beta.1</Version>
+    <Version>1.6.0-beta.5</Version>
     <AssemblyVersion>1.6.0.0</AssemblyVersion>
     <FileVersion>1.6.0.0</FileVersion>
     <CodexEdition Condition="'$(CodexEdition)' == ''">true</CodexEdition>
     <DefineConstants Condition="'$(CodexEdition)' == 'true'">$(DefineConstants);CODEX_EDITION</DefineConstants>
+    <DefineConstants Condition="'$(LocalTest)' == 'true'">$(DefineConstants);LOCAL_TEST</DefineConstants>
     <ApplicationIcon>assets\PowerPlanTray.ico</ApplicationIcon>
   </PropertyGroup>
 
@@ -20,6 +21,7 @@
   </Target>
 
   <ItemGroup>
+    <PackageReference Include="System.Management" Version="8.0.0" />
     <Compile Remove="tests\**\*.cs" />
     <EmbeddedResource Include="assets\bolt-white.svg" />
     <EmbeddedResource Include="assets\hp-white.svg" />
