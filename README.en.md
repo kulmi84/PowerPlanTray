@@ -20,6 +20,8 @@ Rules are checked at approximately five-second intervals. Schedules do not wake 
 
 ## Downloads
 
+Latest stable release: **[1.6.1](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.1)**. The older [local MSIX test package 1.6.0-beta.9](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.0-beta.9) includes the installer, instructions, public test certificate, and source code. Known CPU/tray delays and the differing embedded build commit are documented on its release page.
+
 [GitHub releases](https://github.com/kulmi84/PowerPlanTray/releases) contain portable Windows x64 ZIPs. The standard edition contains no Codex session watcher; the Codex edition includes optional sleep protection. The Microsoft Store edition is being prepared separately and includes the optional extension, off by default.
 
 ## Privacy and support
