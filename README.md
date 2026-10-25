@@ -4,9 +4,9 @@ Deutsch · [English](README.en.md)
 
 Minimalistisches Windows-Tray-Tool zum schnellen Umschalten zwischen vorhandenen Energieplänen unter Windows 11.
 
-Aktuelle stabile Version: **[1.6.1](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.1)**. Das ältere [lokale MSIX-Testpaket 1.6.0-beta.9](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.0-beta.9) enthält Installer, Anleitung, öffentliches Testzertifikat und Quellcode. Bekannte CPU-/Tray-Verzögerung und abweichende Build-Metadaten sind dort dokumentiert.
+Aktuelle stabile Version: **[1.6.2](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.2)**. Das ältere [lokale MSIX-Testpaket 1.6.0-beta.9](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.0-beta.9) enthält Installer, Anleitung, öffentliches Testzertifikat und Quellcode. Bekannte CPU-/Tray-Verzögerung und abweichende Build-Metadaten sind dort dokumentiert.
 
-Aktuelle Vorabversion: **[1.6.2-beta.3](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.2-beta.3)**. Sie korrigiert die hohe CPU-Last der Codex-Erkennung und das erst nach mehreren Rechtsklicks sichtbare Tray-Menü. [Änderungen und Installationshinweise](docs/releases/1.6.2-beta.3.md).
+Version 1.6.2 korrigiert die hohe CPU-Last der Codex-Erkennung und das erst nach mehreren Rechtsklicks sichtbare Tray-Menü. [Änderungen und Installationshinweise](docs/releases/1.6.2.md).
 
 ## Deutsch und Englisch
 

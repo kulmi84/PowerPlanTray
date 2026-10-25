@@ -8,7 +8,7 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**</DefaultItemExcludes>
     <AssemblyName>PowerPlanTray</AssemblyName>
     <RootNamespace>PowerPlanTray</RootNamespace>
-    <Version>1.6.2-beta.3</Version>
+    <Version>1.6.2</Version>
     <AssemblyVersion>1.6.2.0</AssemblyVersion>
     <FileVersion>1.6.2.0</FileVersion>
     <CodexEdition Condition="'$(CodexEdition)' == ''">true</CodexEdition>
