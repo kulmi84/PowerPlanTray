@@ -35,8 +35,9 @@ jobs:
         shell: pwsh
         run: |
           $version = '${{ steps.version.outputs.value }}'
-          Compress-Archive -Path "$env:RUNNER_TEMP/standard/PowerPlanTray.exe" -DestinationPath "PowerPlanTray-v$version.zip"
-          Compress-Archive -Path "$env:RUNNER_TEMP/codex/PowerPlanTray.exe" -DestinationPath "PowerPlanTray-v$version-Codex.zip"
+          Get-ChildItem "$env:RUNNER_TEMP/standard", "$env:RUNNER_TEMP/codex" -Filter *.pdb | Remove-Item
+          Compress-Archive -Path "$env:RUNNER_TEMP/standard/*" -DestinationPath "PowerPlanTray-v$version.zip"
+          Compress-Archive -Path "$env:RUNNER_TEMP/codex/*" -DestinationPath "PowerPlanTray-v$version-Codex.zip"
       - name: Upload standard ZIP
         uses: actions/upload-artifact@v4
         with:

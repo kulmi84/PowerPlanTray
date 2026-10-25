@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using System.Text;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace PowerPlanTray;
@@ -15,7 +15,13 @@ internal sealed class CodexStandbyGuard : IDisposable
     private static readonly TimeSpan StaleTaskTimeout = TimeSpan.FromMinutes(90);
     private static readonly int[] SupportedGraceMinutes = { 5, 10, 15, 30, 60 };
     private readonly object _gate = new();
-    private readonly Dictionary<string, SessionTail> _sessions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, CodexSessionLog> _sessions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConcurrentDictionary<string, byte> _changedPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _pendingPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly byte[] _readBuffer = new byte[64 * 1024];
+    private FileSystemWatcher? _watcher;
+    private DateTimeOffset _nextDiscovery;
+    private int _rescanRequested = 1;
     private readonly System.Threading.Timer _timer;
     private readonly string _sessionsRoot = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex", "sessions");
@@ -26,7 +32,7 @@ internal sealed class CodexStandbyGuard : IDisposable
     private int _graceMinutes = 15;
     private IntPtr _requestHandle = IntPtr.Zero;
     private bool _requestActive;
-    private string _status = L.T("Deaktiviert");
+    private volatile string _status = L.T("Deaktiviert");
 
     public CodexStandbyGuard()
     {
@@ -35,7 +41,8 @@ internal sealed class CodexStandbyGuard : IDisposable
 
     public string Status
     {
-        get { lock (_gate) return _status; }
+        // Opening the tray menu must never wait for filesystem work in Poll.
+        get { return _status; }
     }
 
     public void Configure(bool enabled, int graceMinutes)
@@ -49,12 +56,16 @@ internal sealed class CodexStandbyGuard : IDisposable
             if (!enabled)
             {
                 _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                _watcher?.Dispose();
+                _watcher = null;
+                _changedPaths.Clear();
                 ReleaseRequest();
                 _status = L.T("Deaktiviert");
             }
             else
             {
-                _timer.Change(0, 2000);
+                Interlocked.Exchange(ref _rescanRequested, 1);
+                _timer.Change(0, Timeout.Infinite);
             }
         }
     }
@@ -69,17 +80,30 @@ internal sealed class CodexStandbyGuard : IDisposable
             {
                 if (Directory.Exists(_sessionsRoot))
                 {
-                    // Old sessions can still be resumed, so retain already watched paths.
-                    var paths = Directory.EnumerateFiles(_sessionsRoot, "*.jsonl", SearchOption.AllDirectories)
-                        .Select(path => new FileInfo(path))
-                        .OrderByDescending(f => f.LastWriteTimeUtc)
-                        .Take(250)
-                        .Select(f => f.FullName)
-                        .Concat(_sessions.Keys)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .ToArray();
+                    EnsureWatcher();
+                    var discoveryTime = DateTimeOffset.UtcNow;
+                    if (Interlocked.Exchange(ref _rescanRequested, 0) != 0 || discoveryTime >= _nextDiscovery)
+                    {
+                        // Watcher events discover resumed old sessions immediately;
+                        // this occasional scan also recovers missed watcher events.
+                        foreach (var file in Directory.EnumerateFiles(_sessionsRoot, "*.jsonl", SearchOption.AllDirectories)
+                            .Select(path => new FileInfo(path))
+                            .Where(f => f.LastWriteTimeUtc >= discoveryTime.UtcDateTime.AddDays(-2))
+                            .OrderByDescending(f => f.LastWriteTimeUtc).Take(250))
+                        {
+                            _sessions.TryAdd(file.FullName, new CodexSessionLog());
+                            _pendingPaths.Add(file.FullName);
+                        }
+                        _nextDiscovery = discoveryTime.AddMinutes(1);
+                    }
+                    foreach (var path in _changedPaths.Keys)
+                        if (_changedPaths.TryRemove(path, out _))
+                        {
+                            _sessions.TryAdd(path, new CodexSessionLog());
+                            _pendingPaths.Add(path);
+                        }
 
-                    foreach (var path in paths)
+                    foreach (var path in _pendingPaths.ToArray())
                         ReadAppendedEvents(path);
                 }
 
@@ -110,11 +134,8 @@ internal sealed class CodexStandbyGuard : IDisposable
                     _status = L.T("Bereit - Windows-Standby normal");
                 }
 
-                // Drop obsolete tails; retained empty/old sessions do not prevent sleep.
-                foreach (var path in _sessions
-                    .Where(p => !p.Value.Active && now - p.Value.LastActivity > TimeSpan.FromDays(2))
-                    .Select(p => p.Key).ToArray())
-                    _sessions.Remove(path);
+                // Keep stale byte offsets: discarding them caused complete old logs
+                // to be reparsed on every poll. Stale activity above cannot block sleep.
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
             {
@@ -125,93 +146,41 @@ internal sealed class CodexStandbyGuard : IDisposable
             finally
             {
                 _polling = false;
+                // A one-shot timer prevents queued polls contending for the gate.
+                // Catch up existing files in small passes, then return to idle polling.
+                if (!_disposed && _enabled)
+                    _timer.Change(_sessions.Values.Any(session => session.HasMore) ? 100 : 2000, Timeout.Infinite);
             }
         }
+    }
+
+    private void EnsureWatcher()
+    {
+        if (_watcher is not null) return;
+        _watcher = new FileSystemWatcher(_sessionsRoot, "*.jsonl")
+        {
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size
+        };
+        _watcher.Created += (_, e) => _changedPaths[e.FullPath] = 0;
+        _watcher.Changed += (_, e) => _changedPaths[e.FullPath] = 0;
+        _watcher.Renamed += (_, e) => _changedPaths[e.FullPath] = 0;
+        _watcher.Error += (_, _) => Interlocked.Exchange(ref _rescanRequested, 1);
+        _watcher.EnableRaisingEvents = true;
     }
 
     private void ReadAppendedEvents(string path)
     {
         try
         {
-            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
-                FileShare.ReadWrite | FileShare.Delete);
-            if (!_sessions.TryGetValue(path, out var session))
-            {
-                session = new SessionTail();
-                _sessions[path] = session;
-            }
-
-            if (stream.Length < session.Position)
-            {
-                session.Position = 0;
-                session.Line.SetLength(0);
-                session.Active = false;
-                session.GraceStart = null;
-            }
-            if (stream.Length == session.Position) return;
-
-            stream.Seek(session.Position, SeekOrigin.Begin);
-            var buffer = new byte[64 * 1024];
-            int count;
-            while ((count = stream.Read(buffer, 0, buffer.Length)) > 0)
-            {
-                for (var i = 0; i < count; i++)
-                {
-                    if (buffer[i] == (byte)'\n')
-                    {
-                        if (session.Line.Length > 0)
-                            ReadEvent(session, Encoding.UTF8.GetString(session.Line.ToArray()).TrimEnd('\r'));
-                        session.Line.SetLength(0);
-                    }
-                    else if (session.Line.Length < 2 * 1024 * 1024)
-                    {
-                        // Bound memory when a response_item contains a very large payload.
-                        session.Line.WriteByte(buffer[i]);
-                    }
-                }
-            }
-            session.Position = stream.Position;
+            var session = _sessions[path];
+            session.Read(path, _readBuffer);
+            if (!session.HasMore) _pendingPaths.Remove(path);
         }
-        catch (IOException) { /* A file being rotated will be checked again next tick. */ }
-        catch (UnauthorizedAccessException) { /* Other Codex sessions remain monitored. */ }
-    }
-
-    private static void ReadEvent(SessionTail session, string line)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(line);
-            var root = doc.RootElement;
-            if (!root.TryGetProperty("type", out var kind)) return;
-
-            var observedAt = DateTimeOffset.UtcNow;
-            var eventTime = observedAt;
-            if (root.TryGetProperty("timestamp", out var timestamp) &&
-                timestamp.ValueKind == JsonValueKind.String &&
-                timestamp.TryGetDateTimeOffset(out var parsed))
-                eventTime = parsed > observedAt ? observedAt : parsed;
-
-            // All new JSONL records indicate activity in this session.
-            session.LastActivity = eventTime;
-            if (kind.GetString() != "event_msg" ||
-                !root.TryGetProperty("payload", out var payload) ||
-                !payload.TryGetProperty("type", out var payloadKind))
-                return;
-
-            switch (payloadKind.GetString())
-            {
-                case "task_started":
-                    session.Active = true;
-                    session.GraceStart = null;
-                    break;
-                case "task_complete":
-                case "turn_aborted":
-                    session.Active = false;
-                    session.GraceStart = eventTime;
-                    break;
-            }
-        }
-        catch (JsonException) { /* Skip partial/unsupported messages, never log content. */ }
+        catch (FileNotFoundException) { _sessions.Remove(path); _pendingPaths.Remove(path); }
+        catch (DirectoryNotFoundException) { _sessions.Remove(path); _pendingPaths.Remove(path); }
+        catch (IOException) { /* Retry rotated or temporarily unavailable logs. */ }
+        catch (UnauthorizedAccessException) { /* Other sessions remain monitored. */ }
     }
 
     private bool AcquireRequest()
@@ -255,6 +224,8 @@ internal sealed class CodexStandbyGuard : IDisposable
             _disposed = true;
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
             _timer.Dispose();
+            _watcher?.Dispose();
+            _watcher = null;
             ReleaseRequest();
             if (_requestHandle != IntPtr.Zero)
             {
@@ -262,15 +233,6 @@ internal sealed class CodexStandbyGuard : IDisposable
                 _requestHandle = IntPtr.Zero;
             }
         }
-    }
-
-    private sealed class SessionTail
-    {
-        public long Position;
-        public MemoryStream Line { get; } = new();
-        public bool Active;
-        public DateTimeOffset LastActivity = DateTimeOffset.MinValue;
-        public DateTimeOffset? GraceStart;
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

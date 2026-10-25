@@ -13,10 +13,11 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
-    private const string AppVersion = "1.6.1";
 #if LOCAL_TEST
+    private const string AppVersion = "1.6.2-beta.3-perf-test";
     private static readonly bool LocalTest = true;
 #else
+    private const string AppVersion = "1.6.2-beta.3";
     private static readonly bool LocalTest = false;
 #endif
 #if CODEX_EDITION
@@ -58,6 +59,8 @@ internal static class Program
         private readonly Icon _genericIcon;
         private AppSettings _settings;
         private List<PowerPlan> _plans = new();
+        private Task<List<PowerPlan>>? _pendingPlans;
+        private long _nextPlanRefresh;
 
         public TrayApplicationContext(bool startedWithWindows)
         {
@@ -67,6 +70,7 @@ internal static class Program
             _codexGuard = new CodexStandbyGuard();
             _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
             _plans = GetPowerPlans();
+            _nextPlanRefresh = Environment.TickCount64 + 30_000;
             EnsureToggleDefaults();
             EnsureStartupDefaults();
 
@@ -83,13 +87,19 @@ internal static class Program
             AppTheme.ApplyMenu(_menu);
             // Refresh the contents on demand. Rebuilding a visible menu on every timer
             // tick makes its open submenus flicker and sometimes collapse.
-            _menu.Opening += (_, _) => RebuildMenu();
+            _menu.Opening += (_, e) =>
+            {
+                RebuildMenu();
+                // WinForms presets Cancel when the menu was empty before Opening.
+                // Rebuilding its items does not reset that preset automatically.
+                e.Cancel = _menu.Items.Count == 0;
+            };
             _notifyIcon = new NotifyIcon
             {
                 Icon = _genericIcon,
                 Text = $"PowerPlanTray v{AppVersion}",
                 ContextMenuStrip = _menu,
-                Visible = true
+                Visible = false
             };
 
             _notifyIcon.MouseClick += (_, e) =>
@@ -102,6 +112,9 @@ internal static class Program
             _timer.Tick += (_, _) => RefreshState();
             _timer.Start();
             RefreshState();
+            // Prepare contents and layout before the tray icon can be clicked.
+            RebuildMenu();
+            _notifyIcon.Visible = true;
         }
 
         protected override void ExitThreadCore()
@@ -123,7 +136,18 @@ internal static class Program
 
         private void RefreshState()
         {
-            _plans = GetPowerPlans();
+            // Cache the plan catalog; checking the active scheme and rules still
+            // happens every five seconds without reloading every plan name.
+            if (_pendingPlans?.IsCompletedSuccessfully == true)
+            {
+                _plans = _pendingPlans.Result;
+                _pendingPlans = null;
+            }
+            if (_pendingPlans is null && Environment.TickCount64 >= _nextPlanRefresh)
+            {
+                _nextPlanRefresh = Environment.TickCount64 + 30_000;
+                _pendingPlans = Task.Run(GetPowerPlans);
+            }
             EnsureToggleDefaults();
             EnsureStartupDefaults();
 
@@ -134,7 +158,10 @@ internal static class Program
                     _automation.Restore(current);
                 else
                 {
-                    var processes = EnergyRuleEngine.ReadProcesses();
+                    // Time/VM rules and Codex monitoring do not need a process scan.
+                    var needsProcesses = _settings.Rules.Any(r => r.Enabled && r.Kind == EnergyRuleKind.App);
+                    var processes = needsProcesses ? EnergyRuleEngine.ReadProcesses()
+                        : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     var needsHyperV = _settings.Rules.Any(r => r.Enabled && r.Kind == EnergyRuleKind.HyperV);
                     var hyperV = needsHyperV ? HyperVReader.Poll() : null;
                     if (needsHyperV && hyperV?.Error is not null) _automation.ReportUnavailable(L.T("Hyper-V nicht erreichbar (Berechtigung prüfen)"));
@@ -148,6 +175,7 @@ internal static class Program
                 current = GetActivePlan();
             }
             var activePlan = _plans.FirstOrDefault(p => string.Equals(p.Guid, current, StringComparison.OrdinalIgnoreCase));
+            if (activePlan is null) _nextPlanRefresh = 0;
             var nextIcon = GetIconForPlan(activePlan?.Name);
             if (!ReferenceEquals(_notifyIcon.Icon, nextIcon))
                 _notifyIcon.Icon = nextIcon;
@@ -158,7 +186,16 @@ internal static class Program
 
         private void RebuildMenu()
         {
-            _menu.Items.Clear();
+            _menu.SuspendLayout();
+            try { BuildMenuItems(); }
+            finally { _menu.ResumeLayout(performLayout: true); }
+        }
+
+        private void BuildMenuItems()
+        {
+            // Clearing a ToolStrip collection does not dispose the removed items.
+            while (_menu.Items.Count > 0)
+                _menu.Items[0].Dispose();
             var current = GetActivePlan();
             foreach (var plan in _plans)
             {
@@ -311,21 +348,26 @@ internal static class Program
         private void EnsureToggleDefaults()
         {
             if (_plans.Count == 0) return;
+            var previousA = _settings.TogglePlanA;
+            var previousB = _settings.TogglePlanB;
             if (FindPlanByGuid(_settings.TogglePlanA) is null)
                 _settings.TogglePlanA = _plans.FirstOrDefault(p => p.Name.Equals("Höchstleistung HP", StringComparison.OrdinalIgnoreCase))?.Guid ?? _plans[0].Guid;
             if (FindPlanByGuid(_settings.TogglePlanB) is null)
                 _settings.TogglePlanB = _plans.FirstOrDefault(p => p.Name.StartsWith("HP Optimized", StringComparison.OrdinalIgnoreCase))?.Guid
                     ?? _plans.FirstOrDefault(p => !string.Equals(p.Guid, _settings.TogglePlanA, StringComparison.OrdinalIgnoreCase))?.Guid
                     ?? _plans[0].Guid;
-            SaveSettings(_settings);
+            if (previousA != _settings.TogglePlanA || previousB != _settings.TogglePlanB)
+                SaveSettings(_settings);
         }
 
         private void EnsureStartupDefaults()
         {
             if (_plans.Count == 0) return;
             if (FindPlanByGuid(_settings.StartupPlan) is null)
+            {
                 _settings.StartupPlan = _plans.FirstOrDefault(p => p.Name.Equals("Leise / Remote", StringComparison.OrdinalIgnoreCase))?.Guid ?? _plans[0].Guid;
-            SaveSettings(_settings);
+                SaveSettings(_settings);
+            }
         }
 
         private PowerPlan? FindPlanByGuid(string? guid) =>
@@ -342,6 +384,9 @@ internal static class Program
 
         private static List<PowerPlan> GetPowerPlans()
         {
+            var nativePlans = TryGetNativePowerPlans();
+            if (nativePlans is not null) return nativePlans;
+            // Keep the existing fallback if Windows cannot enumerate the schemes.
             var result = new List<PowerPlan>();
             var output = RunPowerCfg("/list");
             if (!string.IsNullOrWhiteSpace(output))
@@ -359,6 +404,40 @@ internal static class Program
             result.Add(new PowerPlan(WindowsHighPerformanceGuid, L.T("Windows Höchstleistung"), WindowsHighPerformanceAlias));
             return result;
         }
+
+        private static List<PowerPlan>? TryGetNativePowerPlans()
+        {
+            var result = new List<PowerPlan>();
+            for (uint index = 0; ; index++)
+            {
+                uint size = 16;
+                var status = PowerEnumerate(IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 16, index, out var guid, ref size);
+                if (status == 259) break; // ERROR_NO_MORE_ITEMS
+                if (status != 0 || size != 16) return null;
+                var id = guid.ToString();
+                if (id.Equals(WindowsHighPerformanceGuid, StringComparison.OrdinalIgnoreCase)) continue;
+                uint nameSize = 0;
+                PowerReadFriendlyName(IntPtr.Zero, ref guid, IntPtr.Zero, IntPtr.Zero, null, ref nameSize);
+                var name = id;
+                if (nameSize > 0 && nameSize <= 64 * 1024)
+                {
+                    var buffer = new byte[nameSize];
+                    if (PowerReadFriendlyName(IntPtr.Zero, ref guid, IntPtr.Zero, IntPtr.Zero, buffer, ref nameSize) == 0)
+                        name = Encoding.Unicode.GetString(buffer, 0, (int)nameSize).TrimEnd('\0');
+                }
+                result.Add(new PowerPlan(id, name, id));
+            }
+            result.Add(new PowerPlan(WindowsHighPerformanceGuid, L.T("Windows Höchstleistung"), WindowsHighPerformanceAlias));
+            return result;
+        }
+
+        [DllImport("powrprof.dll")]
+        private static extern uint PowerEnumerate(IntPtr root, IntPtr scheme, IntPtr subgroup,
+            uint accessFlags, uint index, out Guid buffer, ref uint bufferSize);
+
+        [DllImport("powrprof.dll")]
+        private static extern uint PowerReadFriendlyName(IntPtr root, ref Guid scheme, IntPtr subgroup,
+            IntPtr setting, [Out] byte[]? buffer, ref uint bufferSize);
 
         private static AppSettings LoadSettings()
         {
@@ -425,10 +504,17 @@ internal static class Program
 
         private static string? GetActivePlan()
         {
-            var output = RunPowerCfg("/getactivescheme");
-            var match = Regex.Match(output, "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-            return match.Success ? match.Value : null;
+            // In particular, opening the menu no longer starts an external process.
+            if (PowerGetActiveScheme(IntPtr.Zero, out var pointer) != 0) return null;
+            try { return Marshal.PtrToStructure<Guid>(pointer).ToString(); }
+            finally { LocalFree(pointer); }
         }
+
+        [DllImport("powrprof.dll")]
+        private static extern uint PowerGetActiveScheme(IntPtr userRootPowerKey, out IntPtr activePolicyGuid);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr LocalFree(IntPtr memory);
 
         private static string RunPowerCfg(string arguments)
         {
@@ -447,9 +533,15 @@ internal static class Program
                     CreateNoWindow = true
                 });
                 if (process is null) return string.Empty;
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(3000);
-                return output;
+                var output = process.StandardOutput.ReadToEndAsync();
+                var error = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(3000))
+                {
+                    process.Kill(entireProcessTree: true);
+                    return string.Empty;
+                }
+                if (!Task.WhenAll(output, error).Wait(1000)) return string.Empty;
+                return output.Result;
             }
             catch { return string.Empty; }
         }
