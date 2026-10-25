@@ -4,10 +4,13 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);CODEX_EDITION</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Localization.cs" Link="Localization.cs" />
     <Compile Include="../EnergyRules.cs" Link="EnergyRules.cs" />
     <Compile Include="../AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../CodexSessionLog.cs" Link="CodexSessionLog.cs" />
+    <Compile Include="../CodexStandbyGuard.cs" Link="CodexStandbyGuard.cs" />
   </ItemGroup>
 </Project>

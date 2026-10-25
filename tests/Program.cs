@@ -103,4 +103,5 @@ Check(L.T("Speichern") == "Speichern", "German variants retain German labels");
 System.Globalization.CultureInfo.CurrentUICulture = System.Globalization.CultureInfo.GetCultureInfo("fr-FR");
 Check(L.T("Abbrechen") == "Cancel", "Other Windows display languages fall back to English");
 System.Globalization.CultureInfo.CurrentUICulture = priorCulture;
+CodexLogTests.Run(Check);
 Console.WriteLine($"{count} checks passed.");
