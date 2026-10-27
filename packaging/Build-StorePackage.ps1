@@ -5,7 +5,7 @@ param(
     [Parameter(Mandatory)][ValidateNotNullOrEmpty()][string]$PublisherDisplayName,
     [ValidateNotNullOrEmpty()][string]$DisplayName = 'PowerPlanTray – Energiepläne automatisch wechseln',
     [ValidateNotNullOrEmpty()][string]$EnglishDisplayName = 'PowerPlanTray – Automatic Power Plan Switching',
-    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.14.0',
+    [ValidateNotNullOrEmpty()][string]$PackageVersion = '1.6.15.0',
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '../artifacts/store'),
     [string]$MakeAppxPath,
     [string]$DotnetPath = 'dotnet'
