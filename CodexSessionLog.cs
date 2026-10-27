@@ -6,6 +6,7 @@ namespace PowerPlanTray;
 // are read from the beginning again on every timer tick.
 internal sealed class CodexSessionLog
 {
+    internal static readonly TimeSpan ActivityTimeout = TimeSpan.FromMinutes(5);
     private const int MaxLineBytes = 2 * 1024 * 1024;
     private readonly MemoryStream _line = new();
     private bool _oversizedLine;
@@ -14,6 +15,11 @@ internal sealed class CodexSessionLog
     internal bool Active { get; private set; }
     internal DateTimeOffset LastActivity { get; private set; } = DateTimeOffset.MinValue;
     internal DateTimeOffset? GraceStart { get; private set; }
+
+    // A start without a matching completion can survive a disconnected or
+    // abandoned chat. Require recent work, and never trust a partially replayed log.
+    internal bool IsActive(DateTimeOffset now) =>
+        !HasMore && Active && now - LastActivity <= ActivityTimeout;
 
     internal long Read(string path, byte[] buffer)
     {
@@ -77,21 +83,38 @@ internal sealed class CodexSessionLog
             if (root.TryGetProperty("timestamp", out var timestamp) &&
                 timestamp.ValueKind == JsonValueKind.String && timestamp.TryGetDateTimeOffset(out var parsed))
                 eventTime = parsed > observedAt ? observedAt : parsed;
-            LastActivity = eventTime;
             if (kind.ValueKind != JsonValueKind.String || kind.GetString() != "event_msg" ||
                 !root.TryGetProperty("payload", out var payload) || payload.ValueKind != JsonValueKind.Object ||
                 !payload.TryGetProperty("type", out var payloadKind) || payloadKind.ValueKind != JsonValueKind.String)
+            {
+                if (Active && kind.ValueKind == JsonValueKind.String && kind.GetString() == "response_item" &&
+                    root.TryGetProperty("payload", out var response) && response.ValueKind == JsonValueKind.Object &&
+                    response.TryGetProperty("type", out var responseType) && responseType.ValueKind == JsonValueKind.String &&
+                    (responseType.GetString() is "function_call" or "function_call_output" or "reasoning" ||
+                     responseType.GetString() == "message" && response.TryGetProperty("role", out var role) &&
+                     role.ValueKind == JsonValueKind.String && role.GetString() == "assistant"))
+                    LastActivity = eventTime;
                 return;
+            }
             switch (payloadKind.GetString())
             {
                 case "task_started":
                     Active = true;
                     GraceStart = null;
+                    LastActivity = eventTime;
                     break;
                 case "task_complete":
                 case "turn_aborted":
                     Active = false;
                     GraceStart = eventTime;
+                    LastActivity = eventTime;
+                    break;
+                case "token_count":
+                case "token_usage_record":
+                case "item_completed":
+                case "agent_message":
+                case "agent_reasoning":
+                    if (Active) LastActivity = eventTime;
                     break;
             }
         }

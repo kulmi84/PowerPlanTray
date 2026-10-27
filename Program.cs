@@ -13,11 +13,10 @@ namespace PowerPlanTray;
 
 internal static class Program
 {
+    private static readonly string AppVersion = typeof(Program).Assembly.GetName().Version!.ToString(3);
 #if LOCAL_TEST
-    private const string AppVersion = "1.6.2-beta.3-perf-test";
     private static readonly bool LocalTest = true;
 #else
-    private const string AppVersion = "1.6.2-beta.3";
     private static readonly bool LocalTest = false;
 #endif
 #if CODEX_EDITION

@@ -64,6 +64,27 @@ internal static class CodexLogTests
             File.AppendAllText(path, Event("turn_aborted", DateTimeOffset.UtcNow));
             log.Read(path, buffer);
             check(!log.Active && log.GraceStart.HasValue, "An aborted turn ends activity and starts grace");
+
+            var started = DateTimeOffset.UtcNow.AddMinutes(-6);
+            File.AppendAllText(path, Event("task_started", started));
+            log.Read(path, buffer);
+            check(!log.IsActive(DateTimeOffset.UtcNow), "An orphaned start stops blocking standby after five minutes without work");
+            File.AppendAllText(path, Event("thread_settings_applied", DateTimeOffset.UtcNow));
+            log.Read(path, buffer);
+            check(!log.IsActive(DateTimeOffset.UtcNow) && log.LastActivity == started,
+                "Settings changes cannot renew an orphaned task");
+            File.AppendAllText(path, Event("item_completed", DateTimeOffset.UtcNow));
+            log.Read(path, buffer);
+            check(log.IsActive(DateTimeOffset.UtcNow), "Actual task progress renews activity even after a silent interval");
+            File.AppendAllText(path, Event("task_complete", DateTimeOffset.UtcNow));
+            log.Read(path, buffer);
+            check(!log.IsActive(DateTimeOffset.UtcNow) && log.GraceStart.HasValue,
+                "Normal completion still transitions to the configured grace period");
+
+            File.AppendAllText(path, Event("task_started", DateTimeOffset.UtcNow) + new string(' ', 300 * 1024) + "\n" +
+                Event("task_complete", DateTimeOffset.UtcNow));
+            log.Read(path, buffer);
+            check(log.HasMore && !log.IsActive(DateTimeOffset.UtcNow), "Historical starts cannot block while the reader is still catching up to a completion");
         }
         finally
         {

@@ -12,7 +12,6 @@ namespace PowerPlanTray;
 #if CODEX_EDITION
 internal sealed class CodexStandbyGuard : IDisposable
 {
-    private static readonly TimeSpan StaleTaskTimeout = TimeSpan.FromMinutes(90);
     private static readonly int[] SupportedGraceMinutes = { 5, 10, 15, 30, 60 };
     private readonly object _gate = new();
     private readonly Dictionary<string, CodexSessionLog> _sessions = new(StringComparer.OrdinalIgnoreCase);
@@ -108,8 +107,7 @@ internal sealed class CodexStandbyGuard : IDisposable
                 }
 
                 var now = DateTimeOffset.UtcNow;
-                var activeCount = _sessions.Values.Count(session =>
-                    session.Active && now - session.LastActivity <= StaleTaskTimeout);
+                var activeCount = _sessions.Values.Count(session => session.IsActive(now));
                 var graceUntil = _sessions.Values
                     .Where(session => !session.Active && session.GraceStart.HasValue)
                     .Select(session => session.GraceStart!.Value.AddMinutes(_graceMinutes))

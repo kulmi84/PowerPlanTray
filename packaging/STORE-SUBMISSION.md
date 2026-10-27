@@ -11,12 +11,12 @@ Im Microsoft Partner Center einen MSIX-App-Eintrag mit dem Namen PowerPlanTray r
   -IdentityName '<Package/Identity/Name aus Partner Center>' `
   -Publisher '<Package/Identity/Publisher aus Partner Center>' `
   -PublisherDisplayName '<PublisherDisplayName aus Partner Center>' `
-  -PackageVersion '1.6.14.0'
+  -PackageVersion '1.6.15.0'
 ```
 
 Voraussetzungen: Windows, .NET 8 SDK und Windows SDK mit MakeAppx. Alternativ nach Aufnahme dieses Workflows in den Hauptbranch **Build Microsoft Store MSIX** in GitHub Actions mit denselben Identitätswerten starten. Das Paket wird stets mit Codex-Unterstützung gebaut, die zur Laufzeit standardmäßig deaktiviert ist.
 
-Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.14.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
+Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.15.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
 
 Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören nicht in die numerische MSIX-Version. Dieser Stand enthält die CPU- und Tray-Korrekturen aus 1.6.2. Die öffentliche Produktidentität steht in store-identity.json; PowerPlanTray.LocalTest ist ausschließlich für lokale Tests bestimmt. Versionen bei späteren Uploads passend erhöhen.
 
