@@ -33,10 +33,16 @@ Data is processed locally. See the [privacy notice](docs/PRIVACY.en.md) and [com
 
 Developed by Marcin Kulmaczewski.
 
-## Interface examples
+## Interface examples · Version 1.7.0
 
 These views use example plans and rules; they are not preconfigured defaults.
 
-![Settings in English](docs/screenshots/en/01-Settings.png)
+![PowerPlanTray 1.7.0 settings in English](docs/screenshots/1.7.0/store-en-settings.png)
+
+![Separate Codex and Claude extensions with independent grace periods](docs/screenshots/1.7.0/store-en-extensions.png)
+
+The enabled extensions shown here are an example, not the default. Both are off by default. Claude Code in the terminal and the Code tab of the Claude desktop app is supported when local logs are available; ordinary Claude chats are not monitored.
+
+### Earlier rule editor example
 
 ![Individual Hyper-V VM rule in English](docs/screenshots/en/05-Hyper-V-Rule.png)

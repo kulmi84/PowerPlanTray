@@ -12,31 +12,29 @@ Version 1.7.0 ergänzt einen getrennt einschaltbaren Standby-Schutz für Claude 
 
 Die Oberfläche folgt automatisch der Windows-Anzeigesprache: Deutsch bei deutscher Anzeigesprache, sonst Englisch. Eigene Regel-, VM- und Energieplannamen bleiben unverändert. Das Store-Paket enthält beide Sprachen.
 
-## Einstellungen und Über-Dialog · Beta 9
+## Einstellungen und Erweiterungen · Version 1.7.0
 
-Ist die Codex-Erweiterung in den Einstellungen ausgeschaltet, erscheinen keine Codex-Einträge im Rechtsklick-Menü. Zum Einschalten die Einstellungen öffnen.
+Codex und Claude Code lassen sich getrennt aktivieren und haben jeweils eine eigene Nachlaufzeit. Beide Erweiterungen sind standardmäßig aus. Bei ausgeschalteter Erweiterung erscheinen ihre Einträge nicht im Rechtsklick-Menü.
 
 Die Fußzeile enthält die Version und **Über…**. Der Entwicklerhinweis **Entwickelt von Marcin Kulmaczewski** steht ausschließlich im Über-Dialog. Der Über-Dialog ist auch im Tray-Menü erreichbar und verlinkt Projekt, Fehlermeldung, Anleitung und Komponentenhinweise auf GitHub.
 
-![Aktuelle Einstellungen mit Version und Über-Schaltfläche](docs/screenshots/settings-beta9.png)
+![Einstellungen von PowerPlanTray 1.7.0](docs/screenshots/1.7.0/store-de-settings.png)
 
-![Über PowerPlanTray mit GitHub-Verweisen](docs/screenshots/about-beta9.png)
+![Getrennte Codex- und Claude-Erweiterungen mit eigener Nachlaufzeit](docs/screenshots/1.7.0/store-de-extensions.png)
 
-## Tray-Menü · Beta 7
+Die aktivierten Erweiterungen im Bild sind ein Beispiel, keine Voreinstellung. Claude Code im Terminal und im Code-Tab der Claude-Desktop-App wird bei vorhandenen lokalen Protokollen unterstützt; gewöhnliche Claude-Chats werden nicht überwacht.
+
+![Über PowerPlanTray 1.7.0 mit GitHub-Verweisen](docs/screenshots/1.7.0/de-about.jpg)
+
+## Frühere Ansichten: Tray-Menü · Beta 7
 
 Markierte Menüeinträge verwenden einen dunklen Hintergrund mit heller Schrift für guten Kontrast.
 
 ![Tray-Menü mit gut lesbarer Markierung](docs/screenshots/menu-beta7.png)
 
-## Weitere Ansichten · Beta 6
+## Frühere Ansichten: Regeln · Beta 6
 
 Aus der aktuellen Oberfläche erzeugte Ansichten mit Beispieldaten. Energiepläne, Apps und VMs sind frei wählbar; die gezeigten Regeln sind keine Voreinstellungen.
-
-### Einstellungen
-
-Dunkle Oberfläche, frei wählbare Energiepläne, Autostart und optionaler Codex-Schutz. Die Versionsnummer bleibt unten links sichtbar.
-
-![PowerPlanTray Beta 6: Einstellungen mit Versionsnummer unten links](docs/screenshots/settings-beta6.png)
 
 ### Regeln und Priorität
 
