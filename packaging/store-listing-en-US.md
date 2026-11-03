@@ -15,7 +15,7 @@ For Microsoft Hyper-V, select an individual local virtual machine. Its unique VM
 
 The first matching rule wins. When no rule matches, PowerPlanTray restores the previous plan. A manual plan change pauses automation.
 
-Optional Codex sleep protection prevents automatic idle sleep during detected Codex tasks, with a configurable grace period. It is off by default and can be enabled in Settings. Processing stays on your PC. When disabled, Codex entries are hidden from the tray menu.
+Optional sleep protection for Codex and Claude Code prevents automatic idle sleep during detected tasks, each with its own configurable grace period. Both are off by default and can be enabled in Settings. Processing stays on your PC. When disabled, their entries are hidden from the tray menu.
 
 Windows 11, x64. Schedule rules work only while PowerPlanTray is running and do not wake your PC. Sleep protection does not prevent a sleep action you request manually.
 
@@ -25,8 +25,11 @@ Windows 11, x64. Schedule rules work only while PowerPlanTray is running and do 
 - Configurable rule priority, start delay, and grace period
 - Restore the previous power plan after rules end
 - Optional Windows startup and startup power plan
-- Optional Codex sleep protection, off by default
+- Optional Codex and Claude Code sleep protection, off by default
 - German and English interface following the Windows display language
+
+## What's new in 1.7.0
+- Optional sleep protection for Claude Code (terminal and Claude desktop app), enabled separately from Codex protection with its own grace period
 
 ## Support
 https://github.com/kulmi84/PowerPlanTray/issues
