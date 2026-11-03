@@ -10,7 +10,9 @@
     <Compile Include="../Localization.cs" Link="Localization.cs" />
     <Compile Include="../EnergyRules.cs" Link="EnergyRules.cs" />
     <Compile Include="../AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../AgentSessionLog.cs" Link="AgentSessionLog.cs" />
     <Compile Include="../CodexSessionLog.cs" Link="CodexSessionLog.cs" />
-    <Compile Include="../CodexStandbyGuard.cs" Link="CodexStandbyGuard.cs" />
+    <Compile Include="../ClaudeSessionLog.cs" Link="ClaudeSessionLog.cs" />
+    <Compile Include="../AgentStandbyGuard.cs" Link="AgentStandbyGuard.cs" />
   </ItemGroup>
 </Project>

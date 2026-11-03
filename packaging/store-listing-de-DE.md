@@ -10,7 +10,7 @@ PowerPlanTray macht vorhandene Windows-Energiepläne direkt über das Infobereic
 
 Mit App-Regeln wird automatisch ein gewählter Energieplan aktiviert, solange ein bestimmtes Programm läuft. EXE-Dateiname, Startverzögerung und Nachlaufzeit sind frei einstellbar. Zeitregeln schalten an ausgewählten Wochentagen innerhalb festgelegter Zeitfenster um. Über die Reihenfolge entscheiden Sie, welche Regel Vorrang hat. Wenn keine Regel mehr greift, kehrt PowerPlanTray zum vorherigen Plan zurück. Eine manuelle Auswahl pausiert die Automatik.
 
-Die optionale Codex-Erweiterung verhindert während erkannter Codex-Aufgaben den automatischen System-Standby und bietet eine einstellbare Nachlaufzeit. Diese Funktion ist standardmäßig ausgeschaltet und kann jederzeit in den Einstellungen aktiviert oder deaktiviert werden. Die Verarbeitung erfolgt lokal auf dem PC.
+Die optionalen Erweiterungen für Codex und Claude Code verhindern während erkannter Aufgaben den automatischen System-Standby und bieten jeweils eine einstellbare Nachlaufzeit. Beide sind standardmäßig ausgeschaltet und können jederzeit in den Einstellungen aktiviert oder deaktiviert werden. Die Verarbeitung erfolgt lokal auf dem PC.
 
 ## Funktionen
 
@@ -22,12 +22,16 @@ Die optionale Codex-Erweiterung verhindert während erkannter Codex-Aufgaben den
 - Oberfläche auf Deutsch und Englisch, passend zur Windows-Anzeigesprache
 - Gemeinsame Regelprioritäten und Wiederherstellung des vorherigen Plans
 - Optionaler Autostart und Energieplan beim Windows-Start
-- Optionaler Codex-Standby-Schutz, standardmäßig aus
+- Optionaler Standby-Schutz für Codex und Claude Code, standardmäßig aus
 - Keine Werbung und kein eigenes Benutzerkonto
 
 ## System und Hinweise
 
-Windows 11, x64. Die Anwendung läuft im Infobereich. Zeitregeln funktionieren, solange die App läuft, und wecken den PC nicht auf. Hyper-V-Regeln erkennen einzelne lokale VMs anhand ihrer eindeutigen ID und ihres Betriebszustands. Hyper-V-Verwaltungsrechte sind erforderlich. Der Codex-Schutz verhindert automatischen Leerlauf-Standby, keine manuell angeordnete Energiesparaktion.
+Windows 11, x64. Die Anwendung läuft im Infobereich. Zeitregeln funktionieren, solange die App läuft, und wecken den PC nicht auf. Hyper-V-Regeln erkennen einzelne lokale VMs anhand ihrer eindeutigen ID und ihres Betriebszustands. Hyper-V-Verwaltungsrechte sind erforderlich. Der Codex- und Claude-Schutz verhindert automatischen Leerlauf-Standby, keine manuell angeordnete Energiesparaktion.
+
+## Neuerungen in 1.7.0
+
+- Optionaler Standby-Schutz für Claude Code (Terminal und Claude-Desktop-App), getrennt vom Codex-Schutz ein- und ausschaltbar, mit eigener Nachlaufzeit
 
 ## Support
 

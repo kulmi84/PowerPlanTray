@@ -1,6 +1,6 @@
 # Microsoft-Store-Vorbereitung
 
-Die Store-Ausgabe ist **eine gemeinsame App** mit App-/Zeitregeln und optionaler Codex-Erweiterung. Der Codex-Schutz ist bei einer frischen Installation aus und lässt sich unter **Einstellungen > Codex-Erweiterung (Standby-Schutz) aktivieren** ein- und ausschalten. Eine bewusst gewählte Einstellung bleibt bei Updates erhalten.
+Die Store-Ausgabe ist **eine gemeinsame App** mit App-/Zeitregeln und optionalen Erweiterungen für Codex und Claude Code. Beide Schutzfunktionen sind bei einer frischen Installation aus und lassen sich unter **Einstellungen** getrennt ein- und ausschalten. Eine bewusst gewählte Einstellung bleibt bei Updates erhalten.
 
 ## Paketidentität
 
@@ -11,12 +11,12 @@ Im Microsoft Partner Center einen MSIX-App-Eintrag mit dem Namen PowerPlanTray r
   -IdentityName '<Package/Identity/Name aus Partner Center>' `
   -Publisher '<Package/Identity/Publisher aus Partner Center>' `
   -PublisherDisplayName '<PublisherDisplayName aus Partner Center>' `
-  -PackageVersion '1.6.15.0'
+  -PackageVersion '1.7.0.0'
 ```
 
 Voraussetzungen: Windows, .NET 8 SDK und Windows SDK mit MakeAppx. Alternativ nach Aufnahme dieses Workflows in den Hauptbranch **Build Microsoft Store MSIX** in GitHub Actions mit denselben Identitätswerten starten. Das Paket wird stets mit Codex-Unterstützung gebaut, die zur Laufzeit standardmäßig deaktiviert ist.
 
-Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.6.15.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
+Der Build erzeugt `artifacts/store/PowerPlanTray-Store-1.7.0.0-x64.msix`, prüft das Manifest mit MakeAppx und berechnet SHA-256. Das unsignierte MSIX ist für die Store-Einreichung bestimmt; Microsoft signiert es nach der Zertifizierung. Es ist kein direkt installierbares Sideload-Paket. Es werden keine Zertifikate oder privaten Schlüssel im Repository benötigt.
 
 Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören nicht in die numerische MSIX-Version. Dieser Stand enthält die CPU- und Tray-Korrekturen aus 1.6.2. Die öffentliche Produktidentität steht in store-identity.json; PowerPlanTray.LocalTest ist ausschließlich für lokale Tests bestimmt. Versionen bei späteren Uploads passend erhöhen.
 
@@ -33,7 +33,7 @@ Die vierte Versionsstelle bleibt für den Store 0. Beta-Kennzeichnungen gehören
 
 1. Reale Paketidentität eintragen und MSIX bauen.
 2. Store-/Flight-installierte App auf einem Windows-11-Testgerät prüfen: Startmenü, Tray, Energieplanwechsel, App-/Zeitregeln, Beenden und Neustart, Update, Deinstallation und Autostart.
-3. Kontrollieren, dass Codex bei neuen Einstellungen aus ist, erst nach Aktivierung überwacht und beim Abschalten die Anforderung an Windows freigibt.
+3. Kontrollieren, dass Codex und Claude bei neuen Einstellungen aus sind, erst nach Aktivierung überwacht und beim Abschalten die Anforderung an Windows freigibt.
 4. Windows App Certification Kit ausführen. Ein erfolgreicher MakeAppx-Build ersetzt diese Zertifizierung und den Installationstest nicht.
 5. Eigene aktuelle App-Screenshots und die Beschreibung aus `store-listing-de-DE.md` ergänzen. Keine Bilder fremder Anwendungen verwenden.
 6. Datenschutz-URL, Support-URL, Preise/Verfügbarkeit und Altersfreigabe im Partner Center vervollständigen. Rechtliche Erklärungen, Altersfreigabe-Fragebogen und endgültige Einreichung durch den Kontoinhaber bestätigen lassen.

@@ -13,7 +13,7 @@ internal sealed class SettingsForm : Form
     private readonly CheckBox _startup;
 
     public SettingsForm(AppSettings settings, IReadOnlyList<RulePlan> plans, string version, bool startupEnabled,
-        bool startupEditable, bool codexAvailable, string codexStatus)
+        bool startupEditable, bool codexAvailable, string codexStatus, string claudeStatus)
     {
         Settings = JsonSerializer.Deserialize<AppSettings>(JsonSerializer.Serialize(settings))!;
         Text = L.T("PowerPlanTray – Einstellungen"); StartPosition = FormStartPosition.CenterScreen;
@@ -75,24 +75,28 @@ internal sealed class SettingsForm : Form
         };
         AppTheme.AddRow(content, rulesCard);
 
-        var codex = new DarkCheckBox { Text = L.T("Codex-Erweiterung aktivieren"), AutoSize = true, Checked = Settings.CodexStandbyEnabled };
-        codex.Name = "CodexEnabled";
-        var grace = new DarkComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
-        grace.Name = "CodexGrace";
-        foreach (var minutes in new[] { 5, 10, 15, 30, 60 }) grace.Items.Add(minutes);
-        grace.SelectedItem = grace.Items.Contains(Settings.CodexGraceMinutes) ? Settings.CodexGraceMinutes : 15;
-        if (codexAvailable)
+        (CheckBox Enabled, ComboBox Grace) StandbyCard(string agent, bool enabled, int graceMinutes, string agentStatus)
         {
-            var codexCard = AppTheme.Card(L.T("Codex · optionaler Standby-Schutz"));
-            AppTheme.AddRow(codexCard, codex);
-            AppTheme.AddRow(codexCard, AppTheme.Note(L.T("Standardmäßig aus. Verhindert automatischen Standby während erkannter Codex-Aufgaben; die Auswertung bleibt lokal.")));
-            var codexFields = AppTheme.Fields(); AppTheme.FieldRow(codexFields, L.T("Nachlaufzeit (Minuten)"), grace);
-            AppTheme.AddRow(codexCard, codexFields);
+            var check = new DarkCheckBox { Text = L.F($"{agent}-Erweiterung aktivieren"), AutoSize = true, Checked = enabled };
+            check.Name = agent + "Enabled";
+            var grace = new DarkComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            grace.Name = agent + "Grace";
+            foreach (var minutes in new[] { 5, 10, 15, 30, 60 }) grace.Items.Add(minutes);
+            grace.SelectedItem = grace.Items.Contains(graceMinutes) ? graceMinutes : 15;
+            if (!codexAvailable) return (check, grace);
+            var card = AppTheme.Card(L.F($"{agent} · optionaler Standby-Schutz"));
+            AppTheme.AddRow(card, check);
+            AppTheme.AddRow(card, AppTheme.Note(L.F($"Standardmäßig aus. Verhindert automatischen Standby während erkannter {agent}-Aufgaben; die Auswertung bleibt lokal.")));
+            var fields = AppTheme.Fields(); AppTheme.FieldRow(fields, L.T("Nachlaufzeit (Minuten)"), grace);
+            AppTheme.AddRow(card, fields);
             var status = AppTheme.Note("");
-            void UpdateCodex() { codexFields.Enabled = codex.Checked; status.Text = codex.Checked ? L.F($"Status bei Öffnen: {codexStatus}. Änderungen gelten nach Speichern.") : L.T("Standby-Schutz ausgeschaltet"); }
-            codex.CheckedChanged += (_, _) => UpdateCodex(); UpdateCodex();
-            AppTheme.AddRow(codexCard, status); AppTheme.AddRow(content, codexCard);
+            void Update() { fields.Enabled = check.Checked; status.Text = check.Checked ? L.F($"Status bei Öffnen: {agentStatus}. Änderungen gelten nach Speichern.") : L.T("Standby-Schutz ausgeschaltet"); }
+            check.CheckedChanged += (_, _) => Update(); Update();
+            AppTheme.AddRow(card, status); AppTheme.AddRow(content, card);
+            return (check, grace);
         }
+        var (codex, codexGrace) = StandbyCard("Codex", Settings.CodexStandbyEnabled, Settings.CodexGraceMinutes, codexStatus);
+        var (claude, claudeGrace) = StandbyCard("Claude", Settings.ClaudeStandbyEnabled, Settings.ClaudeGraceMinutes, claudeStatus);
         var footer = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2, Padding = new Padding(24, 12, 24, 16) };
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -115,7 +119,11 @@ internal sealed class SettingsForm : Form
             if (planB.SelectedItem is RulePlan b) Settings.TogglePlanB = b.Guid;
             if (startPlan.SelectedItem is RulePlan start) Settings.StartupPlan = start.Guid;
             Settings.UseLastPlan = lastPlan.Checked;
-            if (codexAvailable) { Settings.CodexStandbyEnabled = codex.Checked; Settings.CodexGraceMinutes = (int)grace.SelectedItem!; }
+            if (codexAvailable)
+            {
+                Settings.CodexStandbyEnabled = codex.Checked; Settings.CodexGraceMinutes = (int)codexGrace.SelectedItem!;
+                Settings.ClaudeStandbyEnabled = claude.Checked; Settings.ClaudeGraceMinutes = (int)claudeGrace.SelectedItem!;
+            }
             DialogResult = DialogResult.OK;
         };
         actions.Controls.Add(cancel); actions.Controls.Add(save); footer.Controls.Add(actions, 1, 0); layout.Controls.Add(footer, 0, 2);
