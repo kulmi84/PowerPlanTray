@@ -170,6 +170,7 @@ Zusätzlich stehen dort zur Verfügung:
 - **Codex-Standby-Sperre aktivieren** (ein-/ausschalten)
 - **Codex-Nachlaufzeit** (5, 10, 15, 30 oder 60 Minuten)
 - **Codex-Status** (läuft / Nachlauf / normaler Standby)
+- dieselben Einträge für **Claude**, wenn die Claude-Erweiterung eingeschaltet ist
 - Einstellungen
 - aktuelle Programmversion
 - Beenden
@@ -185,6 +186,7 @@ Zusätzlich stehen dort zur Verfügung:
 - **Letzten Energiesparplan verwenden** – lässt den zuletzt aktiven Windows-Energieplan unverändert; die feste Startplan-Auswahl ist dann deaktiviert
 - **Codex-Standby-Sperre aktivieren** – standardmäßig aus
 - **Nachlaufzeit nach Codex-Aufgaben** – standardmäßig 15 Minuten
+- **Claude-Erweiterung aktivieren** und **Nachlaufzeit** – standardmäßig aus bzw. 15 Minuten
 
 ![PowerPlanTray Einstellungen](docs/powerplantray-settings-v1.5.0.png)
 
@@ -211,6 +213,14 @@ Die optionale Funktion liest ausschließlich Ereignistypen und Zeitstempel aus `
 Die Funktion kann keine manuell angeordnete Energiesparaktion verhindern; sie verhindert nur den automatischen Leerlauf-Standby. Wenn Codex sein Protokollformat ändert oder Sitzungsdateien nicht lesbar sind, lässt sich ein laufender Task unter Umständen nicht zuverlässig erkennen. Bei Protokollfehlern wird die Sperre vorsichtshalber aufgehoben.
 
 Die Codex-Erweiterung verändert keine Energieplanparameter. Nutzer können sie jederzeit deaktivieren.
+
+## Claude-Standby-Schutz (nur Codex-Edition)
+
+Funktioniert wie der Codex-Schutz, wird aber getrennt ein- und ausgeschaltet und hat eine eigene Nachlaufzeit. Ausgewertet werden ausschließlich Datensatztypen, `isSidechain`, `stop_reason` und Zeitstempel aus `%USERPROFILE%.claudeprojects***.jsonl` (bzw. `%CLAUDE_CONFIG_DIR%projects`). Erfasst werden Claude Code im Terminal und im Code-Tab der Claude-Desktop-App.
+
+- Jeder `user`- oder `assistant`-Datensatz (Prompt, Werkzeugaufruf, Werkzeugergebnis) gilt als Arbeit und sperrt den automatischen Standby.
+- Ein `assistant`-Datensatz mit `stop_reason` `end_turn`, `stop_sequence` oder `refusal` beendet die Aufgabe und startet die Nachlaufzeit. Abschlussmeldungen von Subagenten innerhalb des Hauptprotokolls beenden die Aufgabe nicht.
+- Claude Code schreibt während langer Werkzeugaufrufe nichts ins Protokoll. Deshalb gilt eine angefangene Aufgabe erst nach 15 Minuten ohne Protokollaktivität als verwaist (Codex: 5 Minuten), etwa nach einem Abbruch durch den Nutzer.
 
 ## Tray-Symbole
 

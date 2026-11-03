@@ -9,6 +9,8 @@ internal sealed class AppSettings
     // Opt-in only, including fresh Store installs and settings from older versions.
     public bool CodexStandbyEnabled { get; set; } = false;
     public int CodexGraceMinutes { get; set; } = 15;
+    public bool ClaudeStandbyEnabled { get; set; } = false;
+    public int ClaudeGraceMinutes { get; set; } = 15;
     public bool RulesEnabled { get; set; } = true;
     public List<EnergyRule> Rules { get; set; } = new();
 }

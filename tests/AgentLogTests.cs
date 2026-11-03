@@ -1,17 +1,17 @@
 using System.Text;
 using PowerPlanTray;
 
-internal static class CodexLogTests
+internal static class AgentLogTests
 {
     internal static void Run(Action<bool, string> check)
     {
         // Reproduce a background poll holding the gate while the menu asks for
         // its status. The status read must finish before that poll is released.
-        using (var guard = new CodexStandbyGuard())
+        using (var guard = AgentStandbyGuard.Codex())
         using (var entered = new ManualResetEventSlim())
         using (var release = new ManualResetEventSlim())
         {
-            var gate = typeof(CodexStandbyGuard).GetField("_gate",
+            var gate = typeof(AgentStandbyGuard).GetField("_gate",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(guard)!;
             var poll = Task.Run(() => { lock (gate) { entered.Set(); release.Wait(); } });
             try
@@ -85,6 +85,61 @@ internal static class CodexLogTests
                 Event("task_complete", DateTimeOffset.UtcNow));
             log.Read(path, buffer);
             check(log.HasMore && !log.IsActive(DateTimeOffset.UtcNow), "Historical starts cannot block while the reader is still catching up to a completion");
+        }
+        finally
+        {
+            File.Delete(Path.Combine(directory, "session.jsonl"));
+            Directory.Delete(directory);
+        }
+    }
+
+    internal static void RunClaude(Action<bool, string> check)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "PowerPlanTray-claude-tests-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "session.jsonl");
+            var buffer = new byte[64 * 1024];
+            var log = new ClaudeSessionLog();
+            string Record(string kind, DateTimeOffset time, string? stopReason = null, bool sidechain = false) =>
+                $"{{\"type\":\"{kind}\",\"isSidechain\":{(sidechain ? "true" : "false")},\"timestamp\":\"{time:O}\"," +
+                $"\"message\":{{\"role\":\"{kind}\",\"stop_reason\":{(stopReason is null ? "null" : $"\"{stopReason}\"")},\"content\":\"secret\"}}}}\n";
+            void Append(string text) { File.AppendAllText(path, text, new UTF8Encoding(false)); log.Read(path, buffer); }
+
+            var old = DateTimeOffset.UtcNow.AddDays(-3);
+            Append(Record("user", old) + Record("assistant", old, "end_turn"));
+            check(!log.IsActive(DateTimeOffset.UtcNow) && log.GraceStart == old, "Claude: a finished historical turn keeps its completion time");
+            Append("{\"type\":\"file-history-snapshot\"}\n{\"type\":\"queue-operation\"}\n{\"type\":\"attachment\"}\n");
+            check(!log.Active, "Claude: bookkeeping records do not start a turn");
+            Append(Record("user", DateTimeOffset.UtcNow));
+            check(log.IsActive(DateTimeOffset.UtcNow) && log.GraceStart is null, "Claude: a prompt starts activity and cancels grace");
+            Append(Record("assistant", DateTimeOffset.UtcNow, "tool_use") + Record("user", DateTimeOffset.UtcNow));
+            check(log.IsActive(DateTimeOffset.UtcNow), "Claude: tool calls and results keep the turn active");
+            Append(Record("assistant", DateTimeOffset.UtcNow, "end_turn", sidechain: true));
+            check(log.IsActive(DateTimeOffset.UtcNow), "Claude: a subagent's final message inside the main transcript does not end the turn");
+            var done = DateTimeOffset.UtcNow;
+            Append(Record("assistant", done, "end_turn"));
+            check(!log.Active && log.GraceStart == done, "Claude: end_turn ends the turn and starts grace");
+
+            Append(Record("user", DateTimeOffset.UtcNow.AddMinutes(-16)));
+            check(!log.IsActive(DateTimeOffset.UtcNow), "Claude: an interrupted turn stops blocking after fifteen silent minutes");
+            check(log.IsActive(DateTimeOffset.UtcNow.AddMinutes(-2)), "Claude: a long silent tool call within fifteen minutes still blocks");
+
+            var subagent = new ClaudeSessionLog();
+            var subPath = Path.Combine(directory, "agent.jsonl");
+            File.WriteAllText(subPath, Record("user", DateTimeOffset.UtcNow, sidechain: true) +
+                Record("assistant", DateTimeOffset.UtcNow, "tool_use", sidechain: true), new UTF8Encoding(false));
+            subagent.Read(subPath, buffer);
+            check(subagent.IsActive(DateTimeOffset.UtcNow), "Claude: a dedicated subagent log reports its own activity");
+            File.AppendAllText(subPath, Record("assistant", DateTimeOffset.UtcNow, "end_turn", sidechain: true));
+            subagent.Read(subPath, buffer);
+            check(!subagent.Active && subagent.GraceStart.HasValue, "Claude: a dedicated subagent log ends with its final message");
+            File.Delete(subPath);
+
+            File.WriteAllText(path, "{}\n", new UTF8Encoding(false));
+            log.Read(path, buffer);
+            check(!log.Active && log.GraceStart is null && log.Position == 3, "Claude: truncation resets turn state");
         }
         finally
         {

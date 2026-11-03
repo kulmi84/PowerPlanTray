@@ -15,6 +15,7 @@ The interface follows your Windows display language: German for German Windows d
 - Select **Microsoft Hyper-V: VM is running**, choose **Load VMs**, then pick a local VM. Its unique ID keeps the rule associated after a rename. Hyper-V management permission is required.
 - The first matching rule wins. The previous plan is restored after the last rule ends. A manual plan change pauses automation.
 - The optional Codex sleep-protection extension is off by default. When disabled, its tray-menu entries are hidden.
+- The optional Claude sleep-protection extension works the same way for Claude Code (terminal and Claude desktop app). It is also off by default, has its own grace period, and reads only record types, stop reasons, and timestamps from `%USERPROFILE%.claudeprojects`.
 
 Rules are checked at approximately five-second intervals. Schedules do not wake the PC. Power-plan changes affect the Windows host. Close an older running instance before installing an update or launching another edition.
 

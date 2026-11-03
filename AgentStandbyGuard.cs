@@ -5,16 +5,18 @@ using System.Text.Json;
 namespace PowerPlanTray;
 
 /// <summary>
-/// Observes Codex JSONL status events and holds a Windows SYSTEM power request
-/// while a turn is active or its user-configured grace period has not elapsed.
+/// Observes Codex or Claude Code JSONL session logs and holds a Windows SYSTEM power
+/// request while a turn is active or its user-configured grace period has not elapsed.
 /// Never reads or displays prompt or response contents.
 /// </summary>
 #if CODEX_EDITION
-internal sealed class CodexStandbyGuard : IDisposable
+internal sealed class AgentStandbyGuard : IDisposable
 {
     private static readonly int[] SupportedGraceMinutes = { 5, 10, 15, 30, 60 };
+    private readonly string _agentName;
+    private readonly Func<AgentSessionLog> _createLog;
     private readonly object _gate = new();
-    private readonly Dictionary<string, CodexSessionLog> _sessions = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, AgentSessionLog> _sessions = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _changedPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _pendingPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly byte[] _readBuffer = new byte[64 * 1024];
@@ -22,8 +24,7 @@ internal sealed class CodexStandbyGuard : IDisposable
     private DateTimeOffset _nextDiscovery;
     private int _rescanRequested = 1;
     private readonly System.Threading.Timer _timer;
-    private readonly string _sessionsRoot = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".codex", "sessions");
+    private readonly string _sessionsRoot;
 
     private bool _enabled;
     private bool _disposed;
@@ -33,10 +34,25 @@ internal sealed class CodexStandbyGuard : IDisposable
     private bool _requestActive;
     private volatile string _status = L.T("Deaktiviert");
 
-    public CodexStandbyGuard()
+    private AgentStandbyGuard(string agentName, string sessionsRoot, Func<AgentSessionLog> createLog)
     {
+        _agentName = agentName;
+        _sessionsRoot = sessionsRoot;
+        _createLog = createLog;
         _timer = new System.Threading.Timer(_ => Poll(), null, Timeout.Infinite, Timeout.Infinite);
     }
+
+    private static string UserProfile => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+    public static AgentStandbyGuard Codex() =>
+        new("Codex", Path.Combine(UserProfile, ".codex", "sessions"), () => new CodexSessionLog());
+
+    // Claude Code (CLI and desktop app) keeps transcripts below its config
+    // directory, which CLAUDE_CONFIG_DIR may relocate.
+    public static AgentStandbyGuard Claude() =>
+        new("Claude", Path.Combine(
+            Environment.GetEnvironmentVariable("CLAUDE_CONFIG_DIR") is { Length: > 0 } dir ? dir : Path.Combine(UserProfile, ".claude"),
+            "projects"), () => new ClaudeSessionLog());
 
     public string Status
     {
@@ -90,7 +106,7 @@ internal sealed class CodexStandbyGuard : IDisposable
                             .Where(f => f.LastWriteTimeUtc >= discoveryTime.UtcDateTime.AddDays(-2))
                             .OrderByDescending(f => f.LastWriteTimeUtc).Take(250))
                         {
-                            _sessions.TryAdd(file.FullName, new CodexSessionLog());
+                            _sessions.TryAdd(file.FullName, _createLog());
                             _pendingPaths.Add(file.FullName);
                         }
                         _nextDiscovery = discoveryTime.AddMinutes(1);
@@ -98,7 +114,7 @@ internal sealed class CodexStandbyGuard : IDisposable
                     foreach (var path in _changedPaths.Keys)
                         if (_changedPaths.TryRemove(path, out _))
                         {
-                            _sessions.TryAdd(path, new CodexSessionLog());
+                            _sessions.TryAdd(path, _createLog());
                             _pendingPaths.Add(path);
                         }
 
@@ -123,7 +139,7 @@ internal sealed class CodexStandbyGuard : IDisposable
                         return;
                     }
                     _status = activeCount > 0
-                        ? L.F($"Codex arbeitet ({activeCount} Sitzung(en)) - Standby gesperrt")
+                        ? L.F($"{_agentName} arbeitet ({activeCount} Sitzung(en)) - Standby gesperrt")
                         : L.F($"Nachlauf bis {graceUntil.ToLocalTime():HH:mm:ss} - Standby gesperrt");
                 }
                 else
@@ -139,7 +155,7 @@ internal sealed class CodexStandbyGuard : IDisposable
             {
                 // Fail safe: do not keep an old request on an unreadable log.
                 ReleaseRequest();
-                _status = L.T("Codex-Protokolle nicht lesbar - Standby normal");
+                _status = L.F($"{_agentName}-Protokolle nicht lesbar - Standby normal");
             }
             finally
             {
@@ -190,7 +206,7 @@ internal sealed class CodexStandbyGuard : IDisposable
             {
                 Version = 0,
                 Flags = 1, // POWER_REQUEST_CONTEXT_SIMPLE_STRING
-                Reason = L.T("Codex arbeitet oder Codex-Nachlaufzeit")
+                Reason = L.F($"{_agentName} arbeitet oder {_agentName}-Nachlaufzeit")
             };
             _requestHandle = PowerCreateRequest(ref context);
             if (_requestHandle == IntPtr.Zero || _requestHandle == new IntPtr(-1))
@@ -259,8 +275,10 @@ internal sealed class CodexStandbyGuard : IDisposable
 }
 #else
 // The standard edition contains no session watcher or standby power request.
-internal sealed class CodexStandbyGuard : IDisposable
+internal sealed class AgentStandbyGuard : IDisposable
 {
+    public static AgentStandbyGuard Codex() => new();
+    public static AgentStandbyGuard Claude() => new();
     public string Status => L.T("Nicht enthalten");
     public void Configure(bool enabled, int graceMinutes) { }
     public void Dispose() { }

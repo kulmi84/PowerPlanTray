@@ -46,7 +46,8 @@ internal static class Program
         private readonly NotifyIcon _notifyIcon;
         private readonly ContextMenuStrip _menu;
         private readonly System.Windows.Forms.Timer _timer;
-        private readonly CodexStandbyGuard _codexGuard;
+        private readonly AgentStandbyGuard _codexGuard;
+        private readonly AgentStandbyGuard _claudeGuard;
         private readonly EnergyRuleEngine _ruleEngine = new();
         private readonly EnergyPlanAutomation _automation;
         private bool _editingRules;
@@ -66,8 +67,10 @@ internal static class Program
             _settings = LoadSettings();
             _settings.Rules ??= new();
             _automation = new EnergyPlanAutomation(ActivateRulePlan);
-            _codexGuard = new CodexStandbyGuard();
+            _codexGuard = AgentStandbyGuard.Codex();
             _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
+            _claudeGuard = AgentStandbyGuard.Claude();
+            _claudeGuard.Configure(_settings.ClaudeStandbyEnabled, _settings.ClaudeGraceMinutes);
             _plans = GetPowerPlans();
             _nextPlanRefresh = Environment.TickCount64 + 30_000;
             EnsureToggleDefaults();
@@ -122,6 +125,7 @@ internal static class Program
             _timer.Dispose();
             _automation.Restore(GetActivePlan());
             _codexGuard.Dispose();
+            _claudeGuard.Dispose();
             _notifyIcon.Visible = false;
             _notifyIcon.Dispose();
             _menu.Dispose();
@@ -157,7 +161,7 @@ internal static class Program
                     _automation.Restore(current);
                 else
                 {
-                    // Time/VM rules and Codex monitoring do not need a process scan.
+                    // Time/VM rules and Codex/Claude monitoring do not need a process scan.
                     var needsProcesses = _settings.Rules.Any(r => r.Enabled && r.Kind == EnergyRuleKind.App);
                     var processes = needsProcesses ? EnergyRuleEngine.ReadProcesses()
                         : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -181,6 +185,34 @@ internal static class Program
             var nextTooltip = activePlan is null ? $"PowerPlanTray v{AppVersion}" : TrimNotifyText($"PowerPlanTray - {activePlan.Name}");
             if (!string.Equals(_notifyIcon.Text, nextTooltip, StringComparison.Ordinal))
                 _notifyIcon.Text = nextTooltip;
+        }
+
+        private void AddStandbyMenu(string agent, AgentStandbyGuard guard, Func<bool> enabled, Action<bool> setEnabled,
+            Func<int> graceMinutes, Action<int> setGraceMinutes)
+        {
+            _menu.Items.Add(new ToolStripMenuItem(L.F($"{agent}-Standby-Sperre aktivieren"), null, (_, _) =>
+            {
+                setEnabled(!enabled());
+                SaveSettings(_settings);
+                guard.Configure(enabled(), graceMinutes());
+                // The next Opening event refreshes the menu; do not rebuild it mid-click.
+            }) { Checked = enabled() });
+
+            var graceMenu = new ToolStripMenuItem(L.F($"{agent}-Nachlaufzeit")) { Enabled = enabled() };
+            foreach (var minutes in new[] { 5, 10, 15, 30, 60 })
+            {
+                var selectedMinutes = minutes;
+                graceMenu.DropDownItems.Add(new ToolStripMenuItem(L.F($"{minutes} Minuten"), null, (_, _) =>
+                {
+                    setGraceMinutes(selectedMinutes);
+                    SaveSettings(_settings);
+                    guard.Configure(true, selectedMinutes);
+                    // Avoid changing a visible menu or its open submenu.
+                }) { Checked = graceMinutes() == minutes });
+            }
+            _menu.Items.Add(graceMenu);
+            _menu.Items.Add(new ToolStripMenuItem($"{agent}: {guard.Status}") { Enabled = false });
+            _menu.Items.Add(new ToolStripSeparator());
         }
 
         private void RebuildMenu()
@@ -218,31 +250,11 @@ internal static class Program
                 _menu.Items.Add(new ToolStripMenuItem(L.T("Regeln jetzt fortsetzen"), null, (_, _) => { _automation.Resume(); RefreshState(); }));
             _menu.Items.Add(new ToolStripSeparator());
             if (CodexEdition && _settings.CodexStandbyEnabled)
-            {
-            _menu.Items.Add(new ToolStripMenuItem(L.T("Codex-Standby-Sperre aktivieren"), null, (_, _) =>
-            {
-                _settings.CodexStandbyEnabled = !_settings.CodexStandbyEnabled;
-                SaveSettings(_settings);
-                _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
-                // The next Opening event refreshes the menu; do not rebuild it mid-click.
-            }) { Checked = _settings.CodexStandbyEnabled });
-
-            var graceMenu = new ToolStripMenuItem(L.T("Codex-Nachlaufzeit")) { Enabled = _settings.CodexStandbyEnabled };
-            foreach (var minutes in new[] { 5, 10, 15, 30, 60 })
-            {
-                var selectedMinutes = minutes;
-                graceMenu.DropDownItems.Add(new ToolStripMenuItem(L.F($"{minutes} Minuten"), null, (_, _) =>
-                {
-                    _settings.CodexGraceMinutes = selectedMinutes;
-                    SaveSettings(_settings);
-                    _codexGuard.Configure(true, selectedMinutes);
-                    // Avoid changing a visible menu or its open submenu.
-                }) { Checked = _settings.CodexGraceMinutes == minutes });
-            }
-            _menu.Items.Add(graceMenu);
-            _menu.Items.Add(new ToolStripMenuItem($"Codex: {_codexGuard.Status}") { Enabled = false });
-            _menu.Items.Add(new ToolStripSeparator());
-            }
+                AddStandbyMenu("Codex", _codexGuard, () => _settings.CodexStandbyEnabled, v => _settings.CodexStandbyEnabled = v,
+                    () => _settings.CodexGraceMinutes, v => _settings.CodexGraceMinutes = v);
+            if (CodexEdition && _settings.ClaudeStandbyEnabled)
+                AddStandbyMenu("Claude", _claudeGuard, () => _settings.ClaudeStandbyEnabled, v => _settings.ClaudeStandbyEnabled = v,
+                    () => _settings.ClaudeGraceMinutes, v => _settings.ClaudeGraceMinutes = v);
             _menu.Items.Add(new ToolStripMenuItem(L.T("Einstellungen..."), null, (_, _) => ShowSettings()));
             _menu.Items.Add(new ToolStripMenuItem(L.T("Über PowerPlanTray…"), null, (_, _) =>
             {
@@ -319,13 +331,14 @@ internal static class Program
                 catch { startupEnabled = false; }
                 using var form = new SettingsForm(_settings,
                     _plans.Select(p => new RulePlan(p.Guid, p.Name)).ToList(), AppVersion, startupEnabled,
-                    !LocalTest || StoreIntegration.IsPackaged, CodexEdition, _codexGuard.Status) { Icon = _boltIcon };
+                    !LocalTest || StoreIntegration.IsPackaged, CodexEdition, _codexGuard.Status, _claudeGuard.Status) { Icon = _boltIcon };
                 form.RuleEditorOpenChanged += open => _editingRules = open;
                 if (form.ShowDialog() != DialogResult.OK) return;
                 _settings = form.Settings;
                 if (form.RulesEdited) _ruleEngine.Reset();
                 SaveSettings(_settings);
                 _codexGuard.Configure(_settings.CodexStandbyEnabled, _settings.CodexGraceMinutes);
+                _claudeGuard.Configure(_settings.ClaudeStandbyEnabled, _settings.ClaudeGraceMinutes);
                 if (StoreIntegration.IsPackaged && form.StartupEnabled != startupEnabled)
                 {
                     try
