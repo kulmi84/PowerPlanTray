@@ -15,15 +15,15 @@ The interface follows your Windows display language: German for German Windows d
 - Select **Microsoft Hyper-V: VM is running**, choose **Load VMs**, then pick a local VM. Its unique ID keeps the rule associated after a rename. Hyper-V management permission is required.
 - The first matching rule wins. The previous plan is restored after the last rule ends. A manual plan change pauses automation.
 - The optional Codex sleep-protection extension is off by default. When disabled, its tray-menu entries are hidden.
-- The optional Claude sleep-protection extension works the same way for Claude Code (terminal and Claude desktop app). It is also off by default, has its own grace period, and reads only record types, stop reasons, and timestamps from `%USERPROFILE%.claudeprojects`.
+- The optional Claude sleep-protection extension works the same way for Claude Code (terminal and Claude desktop app). It is also off by default, has its own grace period, and reads only record types, stop reasons, and timestamps from `%USERPROFILE%\.claude\projects`.
 
 Rules are checked at approximately five-second intervals. Schedules do not wake the PC. Power-plan changes affect the Windows host. Close an older running instance before installing an update or launching another edition.
 
 ## Downloads
 
-Latest stable release: **[1.6.3](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.3)**. The older [local MSIX test package 1.6.0-beta.9](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.0-beta.9) includes the installer, instructions, public test certificate, and source code. Known CPU/tray delays and the differing embedded build commit are documented on its release page.
+Latest stable release: **[1.7.0](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.7.0)**. The older [local MSIX test package 1.6.0-beta.9](https://github.com/kulmi84/PowerPlanTray/releases/tag/v1.6.0-beta.9) includes the installer, instructions, public test certificate, and source code. Known CPU/tray delays and the differing embedded build commit are documented on its release page.
 
-Version 1.6.3 fixes the displayed version and orphaned Codex sessions. It includes the CPU-use and first tray-menu opening fixes. [Changes and installation notes](docs/releases/1.6.3.md).
+Version 1.7.0 adds separately configurable Claude Code sleep protection with its own grace period. Codex protection and the earlier CPU-use and tray-menu fixes remain included. [Changes and installation notes](docs/releases/1.7.0.md).
 
 [GitHub releases](https://github.com/kulmi84/PowerPlanTray/releases) contain portable Windows x64 ZIPs. The standard edition contains no Codex session watcher; the Codex edition includes optional sleep protection. The Microsoft Store edition is being prepared separately and includes the optional extension, off by default.
 

@@ -1,6 +1,6 @@
 # Microsoft-Store-Vorbereitung
 
-Die Store-Ausgabe ist **eine gemeinsame App** mit App-/Zeitregeln und optionalen Erweiterungen für Codex und Claude Code. Beide Schutzfunktionen sind bei einer frischen Installation aus und lässt sich unter **Einstellungen > Codex-Erweiterung (Standby-Schutz) aktivieren** ein- und ausschalten. Eine bewusst gewählte Einstellung bleibt bei Updates erhalten.
+Die Store-Ausgabe ist **eine gemeinsame App** mit App-/Zeitregeln und optionalen Erweiterungen für Codex und Claude Code. Beide Schutzfunktionen sind bei einer frischen Installation aus und lassen sich unter **Einstellungen** getrennt ein- und ausschalten. Eine bewusst gewählte Einstellung bleibt bei Updates erhalten.
 
 ## Paketidentität
 

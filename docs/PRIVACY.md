@@ -2,7 +2,7 @@
 
 [English](PRIVACY.en.md)
 
-Stand: 24. Oktober 2026
+Stand: 3. November 2026
 
 PowerPlanTray verarbeitet seine Einstellungen und Statusinformationen lokal auf Ihrem Windows-PC. Die Anwendung enthält keine Analyse-, Werbe- oder Telemetriedienste und überträgt keine App-Nutzungsdaten an den Entwickler.
 
@@ -16,7 +16,7 @@ Die Codex-Erweiterung ist standardmäßig ausgeschaltet. Nur wenn Sie sie einsch
 
 ## Optionale Claude-Erweiterung
 
-Die Claude-Erweiterung ist standardmäßig ausgeschaltet. Nur wenn Sie sie einschalten, liest die App lokale Claude-Code-Sitzungsdateien unter `%USERPROFILE%.claudeprojects` (oder unter `%CLAUDE_CONFIG_DIR%projects`, falls gesetzt), um laufende Aufgaben und deren Ende zu erkennen. Verarbeitet werden Datensatztypen, Endegründe von Antworten und Zeitstempel. Prompt- und Antworttexte werden nicht für die Funktion ausgewertet, angezeigt oder gespeichert. Die Sitzungsdateien werden nicht verändert und nicht übertragen. Deaktivieren Sie die Erweiterung in den Einstellungen, endet die Überwachung und die Standby-Sperre wird freigegeben.
+Die Claude-Erweiterung ist standardmäßig ausgeschaltet. Nur wenn Sie sie einschalten, liest die App lokale Claude-Code-Sitzungsdateien unter `%USERPROFILE%\.claude\projects` (oder unter `%CLAUDE_CONFIG_DIR%\projects`, falls gesetzt), um laufende Aufgaben und deren Ende zu erkennen. Verarbeitet werden Datensatztypen, Endegründe von Antworten und Zeitstempel. Prompt- und Antworttexte werden nicht für die Funktion ausgewertet, angezeigt oder gespeichert. Die Sitzungsdateien werden nicht verändert und nicht übertragen. Deaktivieren Sie die Erweiterung in den Einstellungen, endet die Überwachung und die Standby-Sperre wird freigegeben.
 
 ## Speicherung und Löschung
 

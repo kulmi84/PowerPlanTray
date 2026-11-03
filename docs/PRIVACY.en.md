@@ -1,6 +1,6 @@
 # Privacy notice for PowerPlanTray
 
-Updated: October 24, 2026
+Updated: November 3, 2026
 
 PowerPlanTray processes its settings and status information locally on your Windows PC. It contains no analytics, advertising, or telemetry services and sends no app usage data to the developer.
 
@@ -14,7 +14,7 @@ The Codex extension is off by default. Only when enabled does it read local Code
 
 ## Optional Claude extension
 
-The Claude extension is off by default. Only when enabled does it read local Claude Code session files under `%USERPROFILE%.claudeprojects` (or `%CLAUDE_CONFIG_DIR%projects` when set) to detect tasks starting and ending. It processes record types, response stop reasons, and timestamps. Prompt and response text is not used, displayed, or saved for this function. Session files are not modified or transmitted. Disabling the extension stops monitoring and releases the sleep-protection request.
+The Claude extension is off by default. Only when enabled does it read local Claude Code session files under `%USERPROFILE%\.claude\projects` (or `%CLAUDE_CONFIG_DIR%\projects` when set) to detect tasks starting and ending. It processes record types, response stop reasons, and timestamps. Prompt and response text is not used, displayed, or saved for this function. Session files are not modified or transmitted. Disabling the extension stops monitoring and releases the sleep-protection request.
 
 ## Storage and deletion
 
