@@ -10,7 +10,7 @@ PowerPlanTray macht vorhandene Windows-Energiepläne direkt über das Infobereic
 
 Mit App-Regeln wird automatisch ein gewählter Energieplan aktiviert, solange ein bestimmtes Programm läuft. EXE-Dateiname, Startverzögerung und Nachlaufzeit sind frei einstellbar. Zeitregeln schalten an ausgewählten Wochentagen innerhalb festgelegter Zeitfenster um. Über die Reihenfolge entscheiden Sie, welche Regel Vorrang hat. Wenn keine Regel mehr greift, kehrt PowerPlanTray zum vorherigen Plan zurück. Eine manuelle Auswahl pausiert die Automatik.
 
-Die optionalen Erweiterungen für Codex und Claude Code verhindern während erkannter Aufgaben den automatischen System-Standby und bieten jeweils eine einstellbare Nachlaufzeit. Beide sind standardmäßig ausgeschaltet und kann jederzeit in den Einstellungen aktiviert oder deaktiviert werden. Die Verarbeitung erfolgt lokal auf dem PC.
+Die optionalen Erweiterungen für Codex und Claude Code verhindern während erkannter Aufgaben den automatischen System-Standby und bieten jeweils eine einstellbare Nachlaufzeit. Beide sind standardmäßig ausgeschaltet und können jederzeit in den Einstellungen aktiviert oder deaktiviert werden. Die Verarbeitung erfolgt lokal auf dem PC.
 
 ## Funktionen
 
